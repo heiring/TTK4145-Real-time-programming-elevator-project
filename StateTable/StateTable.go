@@ -2,6 +2,8 @@ package statetable
 
 import (
 	"strconv"
+
+	"../orderdistributor"
 )
 
 var stateTable [7][9]int
@@ -19,7 +21,10 @@ func UpdateStateTableIndex(row, col, elev_nr, val int) {
 
 	// If orders have changed calculate again
 	if row > 2 && row < 7 {
-		distributeOrders()
+		// To do: figure out slicing, current code is wrong. This is not python
+		orders := stateTable[3:][(3 * elev_nr):(3 + 3*elev_nr)]
+		position := stateTable[1:3][(3 * elev_nr):(3 + 3*elev_nr)]
+		orderdistributor.DistributeOrders(orders, position)
 	}
 }
 

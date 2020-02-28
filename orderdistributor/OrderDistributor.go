@@ -11,7 +11,7 @@ import (
 
 var prioritizedOrders = make([]int, 0)
 
-func distributeOrders(orders, positions [][]int) {
+func DistributeOrders(orders, positions [][]int) {
 	direction, lastFloor := getDirectionAndFloor(positions)
 
 	for row := 0; row < 4; row++ {

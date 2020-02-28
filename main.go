@@ -7,6 +7,12 @@ import (
 )
 
 func main() {
+	// **************************************************
+	// To do:
+	// * Implement FSM logic, possibly a routine, orderdistributor should have access to it
+	// * OrderDistributor: Logic for Hall buttons
+	// * StateTable: Figure out slicing
+
 	var elev_nr int = 0
 
 	drvButtons := make(chan elevio.ButtonEvent)
