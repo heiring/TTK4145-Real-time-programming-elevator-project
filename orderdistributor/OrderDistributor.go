@@ -1,17 +1,16 @@
 package orderdistributor
 
 import (
-	"fmt"
 	"math"
 	"strconv"
-	"strings"
 
 	"../elevio"
+	"../tools"
 )
 
 var prioritizedOrders = make([]int, 0)
 
-func DistributeOrders(orders, positions [][]int) {
+func DistributeOrders(orders [4][3]int, positions [3]int) {
 	direction, lastFloor := getDirectionAndFloor(positions)
 
 	for row := 0; row < 4; row++ {
@@ -51,17 +50,19 @@ func DistributeOrders(orders, positions [][]int) {
 	}
 }
 
-func getDirectionAndFloor(positions [][]int) (int, int) {
-	bin := arrayToString(positions[1])
+func CompleteCurrentOrder() {
+	prioritizedOrders = prioritizedOrders[1:]
+}
+
+func getDirectionAndFloor(positions [3]int) (int, int) {
+	bin := tools.ArrayToString(positions)
 	lastFloor, _ := strconv.ParseInt(bin, 0, 64)
-	direction := positions[0][0]*(-1) + positions[0][1]*(0) + positions[0][2]*(1)
-	if direction == 0 && positions[0][1] == 0 {
+	direction := positions[0]*(-1) + positions[1]*(0) + positions[2]*(1)
+	if direction == 0 && positions[1] == 0 {
 		direction = 11
 	}
 
 	return direction, int(lastFloor)
 }
 
-func arrayToString(a []int) string {
-	return strings.Trim(strings.Replace(fmt.Sprint(a), " ", "", -1), "[]")
-}
+func GetCurrentOrder() int { return prioritizedOrders[0] }
