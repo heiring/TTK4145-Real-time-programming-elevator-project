@@ -53,7 +53,7 @@ func ElevatorLifeStatusMonitor(elevatorSliceCh chan<- [3]Elevator) {
 			fmt.Printf("  Lost:     %q\n", p.Lost)
 
 			if len(p.Peers) == 3 && initialUpdateComplete == false {
-				//assume peer Id always remain the same for every elecvator ??
+				//assume peer Id always remain the same for every elevator ??
 				elevatorSlice[0].IsAlive = true
 				elevatorSlice[0].Id = p.Peers[0]
 

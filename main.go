@@ -2,9 +2,10 @@ package main
 
 import (
 	//"./fsm"
-	."./network"
 	"fmt"
 	"time"
+
+	. "./network"
 )
 
 func main() {
@@ -14,25 +15,26 @@ func main() {
 	go ElevatorLifeStatusMonitor(elevatorSliceCh)
 
 	for {
-		
-		fmt.Printf("iteration ")
-		counter ++
-		fmt.Println(counter)		
-
 		select {
-		case p := <- elevatorSliceCh:
-			for _,elevator := range p{
-				
+		case p := <-elevatorSliceCh:
+
+			fmt.Printf("iteration ")
+			counter++
+			fmt.Println(counter)
+
+			for _, elevator := range p {
+
 				fmt.Printf("elevator with id: ")
 				fmt.Printf(elevator.Id)
-				fmt.Printf( "is alive? ")
+				fmt.Printf("is alive? ")
 				fmt.Println(elevator.IsAlive)
-				
+
 			}
-			time.Sleep(1000 * time.Millisecond) 
+			time.Sleep(1000 * time.Millisecond)
+		default:
+			//do nothing
 		}
-		
+
 	}
-	
-	
+
 }
