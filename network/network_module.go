@@ -82,7 +82,7 @@ func ElevatorLifeStatusMonitor(elevatorSliceCh chan<- [3]Elevator) {
 					}
 				}
 			}
-			elevatorSliceCh <- elevatorSlice
+			//elevatorSliceCh <- elevatorSlice
 
 		default:
 			// Do nothing
