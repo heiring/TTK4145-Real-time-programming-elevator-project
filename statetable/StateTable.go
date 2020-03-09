@@ -1,6 +1,7 @@
 package statetable
 
 import (
+	"fmt"
 	"strconv"
 
 	"../orderdistributor"
@@ -9,7 +10,8 @@ import (
 
 var stateTable [7][9]int
 
-func initStateTable() {
+func InitStateTable() {
+	fmt.Println("InitStateTable")
 	for row, cells := range stateTable {
 		for _, col := range cells {
 			stateTable[row][col] = 0
@@ -39,12 +41,31 @@ func UpdateStateTableIndex(row, col, elev_nr, val int) {
 
 func UpdateElevLastFLoor(elev_nr, val int) {
 	ResetElevRow(elev_nr, 2)
+	fmt.Println("UpdateElevLastFLoor, val: ", val)
 	// val in [0, 3]
 	// convert to binary [001, 100]
 	binaryVal := strconv.FormatInt(int64(val), 2)
+	for len(binaryVal) < 3 {
+		binaryVal = "0" + binaryVal
+	}
 	for col := 0; col < 3; col++ {
 		stateTable[2][col] = int(binaryVal[col])
 	}
+}
+
+func UpdateElevDirection(elev_nr, val int) {
+	ResetElevRow(elev_nr, 1)
+	// val = -1, 0, 1
+	if val == -1 {
+		stateTable[2][0] = 1
+	} else if val == 0 {
+		stateTable[2][1] = 1
+	} else if val == 1 {
+		stateTable[2][2] = 1
+	} else {
+		fmt.Println("ERROR! Could not update elev direction")
+	}
+
 }
 
 func ResetElevRow(elev_nr, row int) {
