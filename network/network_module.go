@@ -3,7 +3,6 @@ package network
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"./utilities/localip"
 	"./utilities/peers"
@@ -27,7 +26,7 @@ func initializeElevatorStructs() {
 	//Id??
 }
 
-// AliveTransmission transmits an AliveMsg every second
+// ElevatorLifeStatusMonitor outputs a struct with elevator structs containing life status
 func ElevatorLifeStatusMonitor(elevatorSliceCh chan<- [3]Elevator) {
 
 	initializeElevatorStructs()
@@ -47,12 +46,12 @@ func ElevatorLifeStatusMonitor(elevatorSliceCh chan<- [3]Elevator) {
 	for {
 		select {
 		case p := <-peerUpdateCh:
-			/*
+
 			fmt.Printf("Peer update:\n")
 			fmt.Printf("  Peers:    %q\n", p.Peers)
 			fmt.Printf("  New:      %q\n", p.New)
 			fmt.Printf("  Lost:     %q\n", p.Lost)
-			*/
+
 			if len(p.Peers) == 3 && initialUpdateComplete == false {
 				//assume peer Id always remain the same for every elecvator ??
 				elevatorSlice[0].IsAlive = true
@@ -83,13 +82,12 @@ func ElevatorLifeStatusMonitor(elevatorSliceCh chan<- [3]Elevator) {
 					}
 				}
 			}
+			elevatorSliceCh <- elevatorSlice
 
 		default:
 			// Do nothing
 
-		}		
-		elevatorSliceCh <- elevatorSlice
-		time.Sleep(1000 * time.Millisecond) //??
+		}
 
 	}
 }

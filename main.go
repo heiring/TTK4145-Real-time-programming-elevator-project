@@ -14,6 +14,7 @@ func main() {
 	go ElevatorLifeStatusMonitor(elevatorSliceCh)
 
 	for {
+		
 		fmt.Printf("iteration ")
 		counter ++
 		fmt.Println(counter)		
@@ -30,7 +31,8 @@ func main() {
 			}
 			time.Sleep(1000 * time.Millisecond) 
 		}
-	}	
+		
+	}
 	
 	
 }
