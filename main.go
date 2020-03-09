@@ -2,8 +2,8 @@ package main
 
 import (
 	//"./fsm"
-	"fmt"
-	"time"
+	//"fmt"
+	//"time"
 
 	. "./network"
 )
@@ -11,29 +11,31 @@ import (
 func main() {
 	//fsm.FSM(1)
 	elevatorSliceCh := make(chan [3]Elevator)
-	var counter = 0
+	//var counter = 0
 	go ElevatorLifeStatusMonitor(elevatorSliceCh)
 
 	for {
-		select {
-		case p := <-elevatorSliceCh:
+		/*
+			select {
+			case p := <-elevatorSliceCh:
 
-			fmt.Printf("iteration ")
-			counter++
-			fmt.Println(counter)
+				fmt.Printf("iteration ")
+				counter++
+				fmt.Println(counter)
 
-			for _, elevator := range p {
+				for _, elevator := range p {
 
-				fmt.Printf("elevator with id: ")
-				fmt.Printf(elevator.Id)
-				fmt.Printf("is alive? ")
-				fmt.Println(elevator.IsAlive)
+					fmt.Printf("elevator with id: ")
+					fmt.Printf(elevator.Id)
+					fmt.Printf("is alive? ")
+					fmt.Println(elevator.IsAlive)
 
+				}
+				//time.Sleep(1000 * time.Millisecond)
+			default:
+				//do nothing
 			}
-			time.Sleep(1000 * time.Millisecond)
-		default:
-			//do nothing
-		}
+		*/
 
 	}
 
