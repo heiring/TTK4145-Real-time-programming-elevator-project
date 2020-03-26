@@ -4,15 +4,19 @@ import (
 	//"./fsm"
 	//"fmt"
 	//"time"
-
-	. "./network"
+	"./elevio"
+	"./network"
 )
 
 func main() {
 	//fsm.FSM(1)
-	elevatorSliceCh := make(chan [3]Elevator)
+	elevatorSliceCh := make(chan [3]network.Elevator)
 	//var counter = 0
-	go ElevatorLifeStatusMonitor(elevatorSliceCh)
+	go network.ElevatorLifeStatusMonitor(elevatorSliceCh)
+
+	//initialization for simulator
+	numFloors := 3
+	elevio.Init("localhost:15657", numFloors)
 
 	for {
 		/*
