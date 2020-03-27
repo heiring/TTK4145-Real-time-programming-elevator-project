@@ -1,13 +1,18 @@
 package network
 
+import (
+	"time"
+)
+
+//ElevatorState ...
 type ElevatorState struct {
-	Id string
+	ID string
 	//state table
 }
 
-//broadcasts elevator state. Sends packets to be sent to transmission channel
+//BroadcastElevatorState broadcasts elevator state. Sends packets to be sent to transmission channel
 func BroadcastElevatorState(stateUpdateCh <-chan ElevatorState, elevatorStateTxCh chan<- ElevatorState) {
-	elevatorStateTx := ElevatorState{Id: "null"}
+	//elevatorStateTx := ElevatorState{ID: "null"}
 	for {
 		select {
 		case stateUpdate := <-stateUpdateCh:
@@ -15,12 +20,38 @@ func BroadcastElevatorState(stateUpdateCh <-chan ElevatorState, elevatorStateTxC
 			elevatorStateTxCh <- elevatorStateTx
 
 		default:
-			elevatorStateTxCh <- elevatorStateTx
+			//elevatorStateTxCh <- elevatorStateTx
 		}
 	}
 }
 
-//Listens for elevator state packets, checks if an elevator has gone offline
-func ListenElevatorState() {
+//ListenElevatorState listens for elevator state packets, sends to update channel if necessary
+func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh chan<- ElevatorState, TxFrequency time.Duration) {
+	lastUpdate := make(map[string]time.Time) //gjør om til parameter!!!
+	for {
+		select {
+		case packetReceived := <-elevatorStateRxCh:
 
+			if time.Now().Sub(lastUpdate[packetReceived.ID]) > TxFrequency {
+				stateUpdateCh <- packetReceived
+				lastUpdate[packetReceived.ID] = time.Now()
+			}
+		default:
+			//do stuff
+		}
+
+	}
+}
+
+//UpdateElevatorLifeStatus checks if an elevator has gone offline
+func UpdateElevatorLifeStatus(lastUpdate map[string]time.Time, Timeout time.Duration) {
+	for {
+		for ID, time := range lastUpdate {
+			if time > Timeout {
+				//do stuff
+			}
+
+		}
+
+	}
 }
