@@ -28,7 +28,7 @@ func main() {
 
 	finished := make(chan bool)
 
-	go network2.NetworkTest(transmitPacketCh, stateUpdateCh, finished)
+	go network2.NetworkTest(transmitPacketCh, stateUpdateCh)
 
 	<-finished
 }
