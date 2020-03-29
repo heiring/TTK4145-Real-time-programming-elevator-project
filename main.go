@@ -17,20 +17,18 @@ func main() {
 	elevatorStateTxCh := make(chan network2.ElevatorState)
 	elevatorStateRxCh := make(chan network2.ElevatorState)
 
-	transmitPacketCh := make(chan network2.ElevatorState)
-	stateUpdateCh := make(chan network2.ElevatorState)
+	//transmitPacketCh := make(chan network2.ElevatorState)
+	//stateUpdateCh := make(chan network2.ElevatorState)
 
-	lostIDCh := make(chan string)
+	//lostIDCh := make(chan string)
 
-	go network2.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, 500)
-	go network2.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, 10000, lostIDCh)
+	//go network2.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, 500)
+	//go network2.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, 10000, lostIDCh)
 
-	go bcast.Transmitter(10001, elevatorStateTxCh)
-	go bcast.Receiver(100001, elevatorStateRxCh)
+	go bcast.Transmitter(19569, elevatorStateTxCh)
+	go bcast.Receiver(19569, elevatorStateRxCh)
 
-	finished := make(chan bool)
-
-	go network2.NetworkTest(transmitPacketCh, stateUpdateCh)
+	//go network2.NetworkTest(transmitPacketCh, stateUpdateCh)
 
 	yeet := network2.ElevatorState{ID: "2222", IsAlive: true}
 
@@ -38,11 +36,11 @@ func main() {
 		elevatorStateTxCh <- yeet
 		select {
 		case y := <-elevatorStateRxCh:
+			fmt.Println("packet received")
 			fmt.Println(y.ID)
 		default:
 			//do stuff
 		}
 	}
 
-	<-finished
 }
