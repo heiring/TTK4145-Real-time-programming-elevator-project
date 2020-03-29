@@ -1,46 +1,28 @@
 package main
 
 import (
-	//"./fsm"
-	//"fmt"
-	//"time"
-	"./elevio"
 	"./network"
 )
 
 func main() {
-	//fsm.FSM(1)
-	elevatorSliceCh := make(chan [3]network.Elevator)
-	//var counter = 0
-	go network.ElevatorLifeStatusMonitor(elevatorSliceCh)
 
 	//initialization for simulator
-	numFloors := 3
-	elevio.Init("localhost:15657", numFloors)
+	//numFloors := 3
+	//elevio.Init("localhost:15657", numFloors)
 
-	for {
-		/*
-			select {
-			case p := <-elevatorSliceCh:
+	//network test
+	elevatorStateTxCh := make(chan network.ElevatorState)
+	elevatorStateRxCh := make(chan network.ElevatorState)
 
-				fmt.Printf("iteration ")
-				counter++
-				fmt.Println(counter)
+	transmitPacketCh := make(chan network.ElevatorState)
+	stateUpdateCh := make(chan network.ElevatorState)
 
-				for _, elevator := range p {
+	lostIDCh := make(chan string)
 
-					fmt.Printf("elevator with id: ")
-					fmt.Printf(elevator.Id)
-					fmt.Printf("is alive? ")
-					fmt.Println(elevator.IsAlive)
+	go network.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, 500)
+	go network.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, 10000, lostIDCh)
 
-				}
-				//time.Sleep(1000 * time.Millisecond)
-			default:
-				//do nothing
-			}
-		*/
-
-	}
+	go bcast.Transmitter(10001, elevatorStateTxCh)
+	go bcast.Receiver(100001, elevatorStateRxCh)
 
 }
