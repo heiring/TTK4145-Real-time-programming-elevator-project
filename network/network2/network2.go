@@ -18,11 +18,12 @@ type ElevatorState struct {
 func BroadcastElevatorState(transmitPacketCh <-chan ElevatorState, elevatorStateTxCh chan<- ElevatorState, transmitInterval time.Duration) {
 	ticker := time.NewTicker(transmitInterval * time.Millisecond)
 	elevatorStateTx := <-transmitPacketCh
+	fmt.Println("elevatorStateTx := <-transmitPacketCh")
 	for {
 		select {
 		case transmitPacket := <-transmitPacketCh:
 			elevatorStateTx = transmitPacket
-
+			fmt.Println("case transmitPacket := <-transmitPacketCh")
 		case <-ticker.C:
 			elevatorStateTxCh <- elevatorStateTx
 		default:
