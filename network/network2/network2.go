@@ -10,7 +10,7 @@ import (
 //ElevatorState ...
 type ElevatorState struct {
 	ID      string
-	isAlive bool
+	IsAlive bool
 	//state table
 }
 
@@ -18,12 +18,10 @@ type ElevatorState struct {
 func BroadcastElevatorState(transmitPacketCh <-chan ElevatorState, elevatorStateTxCh chan<- ElevatorState, transmitInterval time.Duration) {
 	ticker := time.NewTicker(transmitInterval * time.Millisecond)
 	elevatorStateTx := <-transmitPacketCh
-	fmt.Println("elevatorStateTx := <-transmitPacketCh")
 	for {
 		select {
 		case transmitPacket := <-transmitPacketCh:
 			elevatorStateTx = transmitPacket
-			fmt.Println("case transmitPacket := <-transmitPacketCh")
 		case <-ticker.C:
 			elevatorStateTxCh <- elevatorStateTx
 		default:
@@ -43,8 +41,8 @@ func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh c
 			receivedPacket = newPacket
 			lastUpdate[receivedPacket.ID] = time.Now()
 			//is elevator back online?
-			if receivedPacket.isAlive == false {
-				receivedPacket.isAlive = true
+			if receivedPacket.IsAlive == false {
+				receivedPacket.IsAlive = true
 			}
 
 		default:
@@ -63,7 +61,7 @@ func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh c
 
 func NetworkTest(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan ElevatorState) {
 	ip, _ := localip.LocalIP()
-	localElevator := ElevatorState{ID: ip, isAlive: true}
+	localElevator := ElevatorState{ID: ip, IsAlive: true}
 	transmitPacketCh <- localElevator
 
 	ticker := time.NewTicker(1000 * time.Millisecond)
@@ -72,7 +70,7 @@ func NetworkTest(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan Ele
 		select {
 		case stateUpdate := <-stateUpdateCh:
 			fmt.Println(stateUpdate.ID)
-			fmt.Println("%v", stateUpdate.isAlive)
+			fmt.Println("%v", stateUpdate.IsAlive)
 			//finished <- true
 
 		case <-ticker.C:

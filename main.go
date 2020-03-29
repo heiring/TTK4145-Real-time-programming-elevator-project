@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"./network/bcast"
 	"./network/network2"
 )
@@ -29,6 +31,18 @@ func main() {
 	finished := make(chan bool)
 
 	go network2.NetworkTest(transmitPacketCh, stateUpdateCh)
+
+	yeet := network2.ElevatorState{ID: "2222", IsAlive: true}
+
+	for {
+		elevatorStateTxCh <- yeet
+		select {
+		case y := <-elevatorStateRxCh:
+			fmt.Println(y.ID)
+		default:
+			//do stuff
+		}
+	}
 
 	<-finished
 }
