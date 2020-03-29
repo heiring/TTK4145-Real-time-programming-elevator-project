@@ -1,7 +1,10 @@
-package network
+package network2
 
 import (
+	"fmt"
 	"time"
+
+	"../localip"
 )
 
 //ElevatorState ...
@@ -55,6 +58,22 @@ func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh c
 		}
 
 	}
+}
+
+func NetworkTest(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan ElevatorState) {
+	ip, _ := localip.LocalIP()
+	localElevator := ElevatorState{ID: ip, isAlive: true}
+	transmitPacketCh <- localElevator
+	for {
+		select {
+		case stateUpdate := <-stateUpdateCh:
+			fmt.Printf(stateUpdate.ID)
+			fmt.Printf("%v", stateUpdate.isAlive)
+		default:
+			//do nothing
+		}
+	}
+
 }
 
 /*

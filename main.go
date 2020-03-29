@@ -1,7 +1,9 @@
 package main
 
 import (
-	"./network"
+	"./network/network2"
+
+	"./network/bcast"
 )
 
 func main() {
@@ -11,18 +13,19 @@ func main() {
 	//elevio.Init("localhost:15657", numFloors)
 
 	//network test
-	elevatorStateTxCh := make(chan network.ElevatorState)
-	elevatorStateRxCh := make(chan network.ElevatorState)
+	elevatorStateTxCh := make(chan network2.ElevatorState)
+	elevatorStateRxCh := make(chan network2.ElevatorState)
 
-	transmitPacketCh := make(chan network.ElevatorState)
-	stateUpdateCh := make(chan network.ElevatorState)
+	transmitPacketCh := make(chan network2.ElevatorState)
+	stateUpdateCh := make(chan network2.ElevatorState)
 
 	lostIDCh := make(chan string)
 
-	go network.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, 500)
-	go network.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, 10000, lostIDCh)
+	go network2.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, 500)
+	go network2.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, 10000, lostIDCh)
 
 	go bcast.Transmitter(10001, elevatorStateTxCh)
 	go bcast.Receiver(100001, elevatorStateRxCh)
 
+	go network2.NetworkTest(transmitPacketCh, stateUpdateCh)
 }
