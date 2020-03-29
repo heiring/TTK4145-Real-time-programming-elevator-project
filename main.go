@@ -27,5 +27,10 @@ func main() {
 	go bcast.Transmitter(10001, elevatorStateTxCh)
 	go bcast.Receiver(100001, elevatorStateRxCh)
 
-	go network2.NetworkTest(transmitPacketCh, stateUpdateCh)
+	finished := make(chan bool)
+	finished <- false
+
+	go network2.NetworkTest(transmitPacketCh, stateUpdateCh, finished)
+
+	<-finished
 }
