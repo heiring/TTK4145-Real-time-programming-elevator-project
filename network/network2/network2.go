@@ -60,7 +60,7 @@ func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh c
 	}
 }
 
-func NetworkTest(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan ElevatorState, finished chan<- bool) {
+func NetworkTest(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan ElevatorState) {
 	ip, _ := localip.LocalIP()
 	localElevator := ElevatorState{ID: ip, isAlive: true}
 	transmitPacketCh <- localElevator
@@ -72,10 +72,11 @@ func NetworkTest(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan Ele
 		case stateUpdate := <-stateUpdateCh:
 			fmt.Println(stateUpdate.ID)
 			fmt.Println("%v", stateUpdate.isAlive)
-			finished <- true
+			//finished <- true
 
 		case <-ticker.C:
 			fmt.Println("nothing recieved")
+			transmitPacketCh <- localElevator
 		default:
 			//do nothing
 		}
