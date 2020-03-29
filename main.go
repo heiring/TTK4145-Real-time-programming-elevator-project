@@ -1,9 +1,8 @@
 package main
 
 import (
-	"./network/network2"
-
 	"./network/bcast"
+	"./network/network2"
 )
 
 func main() {
@@ -28,7 +27,6 @@ func main() {
 	go bcast.Receiver(100001, elevatorStateRxCh)
 
 	finished := make(chan bool)
-	finished <- false
 
 	go network2.NetworkTest(transmitPacketCh, stateUpdateCh, finished)
 

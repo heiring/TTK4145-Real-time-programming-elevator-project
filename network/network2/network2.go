@@ -64,12 +64,18 @@ func NetworkTest(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan Ele
 	ip, _ := localip.LocalIP()
 	localElevator := ElevatorState{ID: ip, isAlive: true}
 	transmitPacketCh <- localElevator
+
+	ticker := time.NewTicker(1000 * time.Millisecond)
 	for {
+
 		select {
 		case stateUpdate := <-stateUpdateCh:
-			fmt.Printf(stateUpdate.ID)
-			fmt.Printf("%v", stateUpdate.isAlive)
+			fmt.Println(stateUpdate.ID)
+			fmt.Println("%v", stateUpdate.isAlive)
 			finished <- true
+
+		case <-ticker.C:
+			fmt.Println("nothing recieved")
 		default:
 			//do nothing
 		}
