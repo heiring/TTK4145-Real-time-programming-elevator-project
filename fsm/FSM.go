@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"fmt"
+	"time"
 
 	"../orderdistributor"
 
@@ -31,52 +32,52 @@ func FSM(elev_nr int) {
 	go pollHardwareActions(chState, elev_nr)
 	fmt.Println("preFor")
 
-	for {
-		state := <-chState
-		fmt.Printf("%v", state)
-		curFloor := statetable.GetCurrentFloor(elev_nr)
-		fmt.Println("preSwitch")
+	// for {
+	// 	state := <-chState
+	// 	fmt.Printf("%v", state)
+	// 	curFloor := statetable.GetCurrentFloor(elev_nr)
+	// 	fmt.Println("preSwitch")
 
-		switch state {
+	// 	switch state {
 
-		case INIT:
-			fmt.Println("INIT")
-			//elevator reaches first floor, transistion to IDLE
-			elevio.SetMotorDirection(elevio.MD_Down)
-			statetable.UpdateElevDirection(elev_nr, elevio.MD_Down)
-		case IDLE:
-			fmt.Println("IDLE")
-			elevio.SetMotorDirection(elevio.MD_Stop)
-			statetable.UpdateElevDirection(elev_nr, elevio.MD_Stop)
+	// 	case INIT:
+	// 		fmt.Println("INIT")
+	// 		//elevator reaches first floor, transistion to IDLE
+	// 		elevio.SetMotorDirection(elevio.MD_Down)
+	// 		statetable.UpdateElevDirection(elev_nr, elevio.MD_Down)
+	// 	case IDLE:
+	// 		fmt.Println("IDLE")
+	// 		elevio.SetMotorDirection(elevio.MD_Stop)
+	// 		statetable.UpdateElevDirection(elev_nr, elevio.MD_Stop)
 
-		case MOVE:
-			fmt.Println("MOVE")
-			curOrder := orderdistributor.GetCurrentOrder()
-			if curOrder > curFloor {
-				fmt.Println("MOVING UP")
-				elevio.SetMotorDirection(elevio.MD_Up)
-				statetable.UpdateElevDirection(elev_nr, elevio.MD_Down)
-			} else if curOrder < curFloor {
-				fmt.Println("MOVING DOWN")
-				elevio.SetMotorDirection(elevio.MD_Down)
-				statetable.UpdateElevDirection(elev_nr, elevio.MD_Down)
-			} else if curOrder == curFloor {
-				fmt.Println("MOVING STOPPED")
-				// state <- WAIT
-				row := curFloor + 3
-				statetable.ResetRow(row)
-				orderdistributor.CompleteCurrentOrder()
-			}
-		case WAIT:
-			fmt.Println("WAIT")
-			elevio.SetMotorDirection(elevio.MD_Stop)
-			statetable.UpdateElevDirection(elev_nr, elevio.MD_Stop)
-		//transisiton to MOVE if there are pending orders
-		//transition to IDLE if not
-		case EM_STOP:
-			fmt.Println("EM_STOP")
-		}
-	}
+	// 	case MOVE:
+	// 		fmt.Println("MOVE")
+	// 		curOrder := orderdistributor.GetCurrentOrder()
+	// 		if curOrder > curFloor {
+	// 			fmt.Println("MOVING UP")
+	// 			elevio.SetMotorDirection(elevio.MD_Up)
+	// 			statetable.UpdateElevDirection(elev_nr, elevio.MD_Down)
+	// 		} else if curOrder < curFloor {
+	// 			fmt.Println("MOVING DOWN")
+	// 			elevio.SetMotorDirection(elevio.MD_Down)
+	// 			statetable.UpdateElevDirection(elev_nr, elevio.MD_Down)
+	// 		} else if curOrder == curFloor {
+	// 			fmt.Println("MOVING STOPPED")
+	// 			// state <- WAIT
+	// 			row := curFloor + 3
+	// 			statetable.ResetRow(row)
+	// 			orderdistributor.CompleteCurrentOrder()
+	// 		}
+	// 	case WAIT:
+	// 		fmt.Println("WAIT")
+	// 		elevio.SetMotorDirection(elevio.MD_Stop)
+	// 		statetable.UpdateElevDirection(elev_nr, elevio.MD_Stop)
+	// 	//transisiton to MOVE if there are pending orders
+	// 	//transition to IDLE if not
+	// 	case EM_STOP:
+	// 		fmt.Println("EM_STOP")
+	// 	}
+	// }
 }
 
 func initFSM(elev_nr int) {
@@ -113,56 +114,70 @@ func pollHardwareActions(state chan elev_state, elev_nr int) {
 	fmt.Println("HWPreLoop")
 	for {
 		fmt.Println("HWLoop")
-		curFloor := statetable.GetCurrentFloor(elev_nr)
-		curOrder := orderdistributor.GetCurrentOrder()
-		// curDir := statetable.GetElevDirection(elev_nr)
+
 		select {
 		case a := <-drvButtons:
-			handleButtonPressed(elev_nr, a)
+			// Update statetable
+			// Update lights
+			// If not moving, begin to move
+			updateBtnLampAndStateTable(elev_nr, a)
+			curDir := statetable.GetElevDirection(elev_nr)
+			curFloor := statetable.GetCurrentFloor(elev_nr)
+			if curDir == elevio.MD_Stop {
+				curOrder := orderdistributor.GetCurrentOrder()
+				if curOrder > curFloor {
+					fmt.Println("MOVING UP")
+					moveInDir(elev_nr, elevio.MD_Up)
+				} else if curOrder < curFloor {
+					fmt.Println("MOVING DOWN")
+					moveInDir(elev_nr, elevio.MD_Down)
+				} else if curOrder == curFloor {
+					moveInDir(elev_nr, elevio.MD_Stop)
+					completeCurOrder(elev_nr, curFloor)
+				}
+			}
 			fmt.Printf("%+b\n", a)
-			if curOrder > curFloor {
-				fmt.Println("MOVING UP")
-				moveInDir(elev_nr, elevio.MD_Up)
-			} else if curOrder < curFloor {
-				fmt.Println("MOVING DOWN")
-				moveInDir(elev_nr, elevio.MD_Down)
-			} else if curOrder == curFloor {
-				moveInDir(elev_nr, elevio.MD_Stop)
-				completeCurOrder(elev_nr, curFloor)
+
+		case floor := <-drvFloors:
+			// Update statetable
+			// Update lights
+			// Check if orderfloor is reached
+			lastFloor := statetable.GetCurrentFloor(elev_nr)
+			curOrder := orderdistributor.GetCurrentOrder()
+			elevio.SetFloorIndicator(lastFloor)
+			elevio.SetFloorIndicator(floor)
+			statetable.UpdateElevLastFLoor(elev_nr, floor)
+			fmt.Println("Current floor: ", floor)
+
+			if curOrder == floor {
+				completeCurOrder(elev_nr, floor)
+				curOrder := orderdistributor.GetCurrentOrder()
+				time.Sleep(3 * time.Second)
+
+				if curOrder > floor {
+					fmt.Println("MOVING UP")
+					moveInDir(elev_nr, elevio.MD_Up)
+				} else if curOrder < floor {
+					fmt.Println("MOVING DOWN")
+					moveInDir(elev_nr, elevio.MD_Down)
+				}
 			}
-
-		case a := <-drvFloors:
-			handleFloorReached(elev_nr, a, curFloor)
-			fmt.Println("Current floor: ", a)
-
-			if curOrder == a {
-				moveInDir(elev_nr, elevio.MD_Stop)
-				completeCurOrder(elev_nr, curFloor)
-			}
-
-			statetable.UpdateElevLastFLoor(elev_nr, a)
 
 		case a := <-drvObstr:
 			fmt.Printf("%+v\n", a)
 
 		case a := <-drvStop:
+			// Stop the elevator
 			fmt.Printf("%+v\n", a)
 		}
 	}
 }
 
-func handleButtonPressed(elev_nr int, butn elevio.ButtonEvent) {
+func updateBtnLampAndStateTable(elev_nr int, butn elevio.ButtonEvent) {
 	var row int = 3 + butn.Floor
 	var col int = int(butn.Button)
 	elevio.SetButtonLamp(butn.Button, butn.Floor, true)
 	statetable.UpdateStateTableIndex(row, col, elev_nr, 1)
-}
-
-func handleFloorReached(elev_nr, floor, lastFloor int) {
-	elevio.SetFloorIndicator(lastFloor)
-	elevio.SetFloorIndicator(floor)
-	fmt.Println("Current floor: ", floor)
-	statetable.UpdateElevLastFLoor(elev_nr, floor)
 }
 
 func moveInDir(elev_nr int, dir elevio.MotorDirection) {
@@ -172,6 +187,7 @@ func moveInDir(elev_nr int, dir elevio.MotorDirection) {
 }
 
 func completeCurOrder(elev_nr, curFloor int) {
+	moveInDir(elev_nr, elevio.MD_Stop)
 	row := curFloor + 3
 	statetable.ResetRow(row)
 	orderdistributor.CompleteCurrentOrder()
