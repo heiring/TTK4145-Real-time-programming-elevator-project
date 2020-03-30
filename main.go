@@ -1,46 +1,45 @@
 package main
 
 import (
-	"./fsm"
-	// "fmt"
-	// "time"
-	// "./elevio"
-	// "./network"
+	"fmt"
+
+	"./network/bcast"
+	"./network/network2"
 )
 
 func main() {
-	fsm.FSM(1)
-	// elevatorSliceCh := make(chan [3]network.Elevator)
-	//var counter = 0
-	// go network.ElevatorLifeStatusMonitor(elevatorSliceCh)
 
 	//initialization for simulator
-	// numFloors := 3
-	// elevio.Init("localhost:15657", numFloors)
+	//numFloors := 3
+	//elevio.Init("localhost:15657", numFloors)
 
-	// for {
-	// 	/*
-	// 		select {
-	// 		case p := <-elevatorSliceCh:
+	//network test
+	elevatorStateTxCh := make(chan network2.ElevatorState)
+	elevatorStateRxCh := make(chan network2.ElevatorState)
 
-	// 			fmt.Printf("iteration ")
-	// 			counter++
-	// 			fmt.Println(counter)
+	//transmitPacketCh := make(chan network2.ElevatorState)
+	//stateUpdateCh := make(chan network2.ElevatorState)
 
-	// 			for _, elevator := range p {
+	//lostIDCh := make(chan string)
 
-	// 				fmt.Printf("elevator with id: ")
-	// 				fmt.Printf(elevator.Id)
-	// 				fmt.Printf("is alive? ")
-	// 				fmt.Println(elevator.IsAlive)
+	//go network2.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, 500)
+	//go network2.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, 10000, lostIDCh)
 
-	// 			}
-	// 			//time.Sleep(1000 * time.Millisecond)
-	// 		default:
-	// 			//do nothing
-	// 		}
-	// 	*/
+	go bcast.Transmitter(19569, elevatorStateTxCh)
+	go bcast.Receiver(19569, elevatorStateRxCh)
 
-	// }
+	//go network2.NetworkTest(transmitPacketCh, stateUpdateCh)
 
+	yeet := network2.ElevatorState{ID: "2222", IsAlive: true}
+
+	for {
+		elevatorStateTxCh <- yeet
+		select {
+		case y := <-elevatorStateRxCh:
+			fmt.Println("packet received")
+			fmt.Println(y.ID)
+		default:
+			//do stuff
+		}
+	}
 }
