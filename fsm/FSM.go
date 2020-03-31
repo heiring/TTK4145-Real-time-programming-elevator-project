@@ -154,7 +154,9 @@ func pollHardwareActions(state chan elev_state, elev_nr int) {
 				curOrder := orderdistributor.GetCurrentOrder()
 				time.Sleep(3 * time.Second)
 
-				if curOrder > floor {
+				if curOrder == -1 {
+					fmt.Println("NO NEW ORDERS, NOT MOVING")
+				} else if curOrder > floor {
 					fmt.Println("MOVING UP")
 					moveInDir(elev_nr, elevio.MD_Up)
 				} else if curOrder < floor {
@@ -169,6 +171,7 @@ func pollHardwareActions(state chan elev_state, elev_nr int) {
 		case a := <-drvStop:
 			// Stop the elevator
 			fmt.Printf("%+v\n", a)
+			moveInDir(elev_nr, elevio.MD_Stop)
 		}
 	}
 }
