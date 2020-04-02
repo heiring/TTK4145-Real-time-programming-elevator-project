@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 
 	"./fsm"
-
-	"./network/network2"
+	// "./network/network2"
 )
 
 func main() {
@@ -33,16 +32,16 @@ func main() {
 
 	//go network2.NetworkTest(transmitPacketCh, stateUpdateCh)
 
-	yeet := network2.ElevatorState{ID: "2222", IsAlive: true}
+	// yeet := network2.ElevatorState{ID: "2222", IsAlive: true}
 
 	for {
-		elevatorStateTxCh <- yeet
-		select {
-		case y := <-elevatorStateRxCh:
-			fmt.Println("packet received")
-			fmt.Println(y.ID)
-		default:
-			//do stuff
-		}
+		// elevatorStateTxCh <- yeet
+		// select {
+		// case y := <-elevatorStateRxCh:
+		// 	fmt.Println("packet received")
+		// 	fmt.Println(y.ID)
+		// default:
+		// 	//do stuff
+		// }
 	}
 }
