@@ -16,13 +16,14 @@ type ElevatorState struct {
 
 //BroadcastElevatorState broadcasts elevator state. Sends packets to be sent to transmission channel
 func BroadcastElevatorState(transmitPacketCh <-chan ElevatorState, elevatorStateTxCh chan<- ElevatorState, transmitInterval time.Duration) {
-	ticker := time.NewTicker(transmitInterval * time.Millisecond)
+	transmissionTicker := time.NewTicker(transmitInterval * time.Millisecond)
 	elevatorStateTx := <-transmitPacketCh
+
 	for {
 		select {
 		case transmitPacket := <-transmitPacketCh:
 			elevatorStateTx = transmitPacket
-		case <-ticker.C:
+		case <-transmissionTicker.C:
 			elevatorStateTxCh <- elevatorStateTx
 		default:
 			//do stuff
@@ -31,34 +32,47 @@ func BroadcastElevatorState(transmitPacketCh <-chan ElevatorState, elevatorState
 }
 
 //ListenElevatorState listens for elevator state packets, sends to update channel if necessary
-func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh chan<- ElevatorState, Timeout time.Duration, lostIDCh chan<- string) {
+func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh chan<- ElevatorState, timeoutns time.Duration, lostIDCh chan<- string, offlineTickerIntervalns time.Duration) {
+	//convert ns to s
+	timeout := timeoutns * 1000000000
+	offlineTickerInterval := offlineTickerIntervalns * 1000000000
+
+	//ticker to check for elevators gone offline
+	ticker := time.NewTicker(offlineTickerInterval)
+
 	lastUpdate := make(map[string]time.Time)
 	receivedPacket := <-elevatorStateRxCh
 	lastUpdate[receivedPacket.ID] = time.Now()
+
 	for {
 		select {
 		case newPacket := <-elevatorStateRxCh:
+
 			receivedPacket = newPacket
 			lastUpdate[receivedPacket.ID] = time.Now()
 			//is elevator back online?
 			if receivedPacket.IsAlive == false {
 				receivedPacket.IsAlive = true
 			}
-
-		default:
-			//is an elevator offline?
-			for ID, t := range lastUpdate {
-				if time.Now().Sub(t) > Timeout {
-					lostIDCh <- ID //HÅNDTER DETTE
-				}
-
-			}
 			stateUpdateCh <- receivedPacket
+		case <-ticker.C:
+			for ID, t := range lastUpdate {
+				fmt.Println(ID)
+				fmt.Println(t)
+				if time.Now().Sub(t) > timeout {
+					lostIDCh <- ID
+					fmt.Println("an elevator died")
+				}
+			}
+		default:
+			//fmt.Println("ListenElevatorState default case")
+
 		}
 
 	}
 }
 
+//NetworkTest yeet
 func NetworkTest(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan ElevatorState) {
 	ip, _ := localip.LocalIP()
 	localElevator := ElevatorState{ID: ip, IsAlive: true}
@@ -81,6 +95,22 @@ func NetworkTest(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan Ele
 		}
 	}
 
+}
+
+//NetworkTest2 brrra
+func NetworkTest2(transmitPacketCh chan<- ElevatorState, stateUpdateCh <-chan ElevatorState) {
+	yeet := ElevatorState{ID: "2222", IsAlive: true}
+
+	for {
+		transmitPacketCh <- yeet
+		select {
+		case y := <-stateUpdateCh:
+			fmt.Println("main : packet received")
+			fmt.Println(y.ID)
+		default:
+			//do stuff
+		}
+	}
 }
 
 /*
