@@ -57,11 +57,12 @@ func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh c
 			stateUpdateCh <- receivedPacket
 		case <-ticker.C:
 			for ID, t := range lastUpdate {
-				fmt.Println(ID)
+				fmt.Printf(ID + ": ")
 				fmt.Println(t)
 				if time.Now().Sub(t) > timeout {
-					lostIDCh <- ID
-					fmt.Println("an elevator died")
+					fmt.Println("not to worry, we're still flying half a ship")
+					//lostIDCh <- ID
+					fmt.Println("lostIDCh")
 				}
 			}
 		default:
