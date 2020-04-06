@@ -26,9 +26,9 @@ func FSM(elev_nr int) {
 }
 
 func initFSM(elev_nr int) {
-	numFloors := 4
+	//numFloors := 4
 
-	elevio.Init("localhost:15000", numFloors)
+	//elevio.Init("localhost:15000", numFloors)
 	statetable.InitStateTable(elev_nr)
 	moveInDir(elev_nr, elevio.MD_Down)
 }
