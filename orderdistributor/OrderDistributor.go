@@ -3,7 +3,6 @@ package orderdistributor
 import (
 	"fmt"
 	"math"
-	"strconv"
 
 	"../elevio"
 	"../tools"
@@ -11,72 +10,111 @@ import (
 
 var prioritizedOrders = make([]int, 0)
 
-func DistributeOrders(orders [4][3]int, positions [3]int) {
+func DistributeOrders(orders [4][3]int, lastFloor, direction int) {
 	fmt.Println("DistributeOrders")
 	fmt.Println("prioritizedOrders: ", prioritizedOrders)
 	fmt.Println("len: ", len(prioritizedOrders))
 	fmt.Println("orders: ", orders)
-	direction, lastFloor := getDirectionAndFloor(positions)
 
 	for row := 0; row < 4; row++ {
+		curHallUpOrder := orders[row][elevio.BT_HallUp]
+		curHallDownOrder := orders[row][elevio.BT_HallDown]
+		curCabOrder := orders[row][elevio.BT_Cab]
+		orderDestination := row
+
 		// Hall buttons
 		// - To do
 
+		// HallUp buttons
+		if curHallUpOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
+			prioritizedOrders = append(prioritizedOrders, orderDestination)
+			fmt.Println("NEW PRIO (HU): ", prioritizedOrders)
+		}
+
+		// HallDown buttons
+		if curHallDownOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
+			prioritizedOrders = append(prioritizedOrders, orderDestination)
+			fmt.Println("NEW PRIO (HD): ", prioritizedOrders)
+			// if len(prioritizedOrders) <= 0 {
+			// 	fmt.Println("0 len")
+			// 	prioritizedOrders = append(prioritizedOrders, curHallDownOrder)
+			// 	fmt.Println("NEW ORDER APPENDED (HD): ", curHallDownOrder)
+			// } else {
+			// 	for index, lastOrder := range prioritizedOrders {
+			// 		lastOrderDirection := (lastOrder - lastFloor) / int(math.Abs(float64(lastOrder-lastFloor)))
+			// 		curHallOrderDirection := (curHallDownOrder - lastFloor) / int(math.Abs(float64(curCabOrder-lastFloor)))
+
+			// 		// if direction not down
+			// 		// Add before lastOrder if closer
+
+			// 		// if lastOrder not in direction but neworder is
+			// 		if (direction != elevio.MD_Stop) && (lastOrderDirection != direction) && (curCabOrderDirection == direction) {
+			// 			prioritizedOrders = append([]int{curCabOrder}, prioritizedOrders...)
+			// 			break
+			// 		}
+
+			// 		// if both orders in same dir and neworder closer than lastOrder
+			// 		if lastOrderDirection == curCabOrderDirection {
+			// 			newOrderDistance := int(math.Abs(float64(lastFloor - curCabOrder)))
+			// 			lastOrderDistance := int(math.Abs(float64(lastFloor - lastOrder)))
+			// 			if newOrderDistance < lastOrderDistance {
+			// 				prioritizedOrders = append([]int{curCabOrder}, prioritizedOrders...)
+			// 			}
+			// 		}
+
+			// 		// Give new order lowest priority
+			// 		if i == (len(prioritizedOrders) - 1) {
+			// 			prioritizedOrders = append(prioritizedOrders, curCabOrder)
+			// 		}
+			// 	}
+			// }
+		}
+
 		// Cab buttons
-		curCabOrder := orders[row][elevio.BT_Cab]
-		if orders[row][elevio.BT_Cab] != 0 {
+		if curCabOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
 			if len(prioritizedOrders) <= 0 {
 				fmt.Println("0 len")
-
-				prioritizedOrders = append(prioritizedOrders, orders[row][elevio.BT_Cab])
-				fmt.Println("APPENDED!")
-				fmt.Println("prioritizedOrders appended 0: ", prioritizedOrders)
-				fmt.Println("orders[row][elevio.BT_Cab] ", orders[row][elevio.BT_Cab], row, elevio.BT_Cab)
+				prioritizedOrders = append(prioritizedOrders, orderDestination)
+				fmt.Println("NEW ORDER APPENDED (CAB): ", curCabOrder)
 			} else {
 				for i, lastOrder := range prioritizedOrders {
-					lastOrderDirection := (lastOrder - lastFloor) / int(math.Abs(float64(lastOrder-lastFloor)))
-					curCabOrderDirection := (curCabOrder - lastFloor) / int(math.Abs(float64(curCabOrder-lastFloor)))
+					if !tools.IntInSlice(orderDestination, prioritizedOrders) {
+						lastOrderDirection, _ := tools.DivCheck(lastOrder-lastFloor, int(math.Abs(float64(lastOrder-lastFloor))))
+						curCabOrderDirection, _ := tools.DivCheck(curCabOrder-lastFloor, int(math.Abs(float64(curCabOrder-lastFloor))))
 
-					// if lastOrder not in direction but neworder is
-					if (direction != elevio.MD_Stop) && (lastOrderDirection != direction) && (curCabOrderDirection == direction) {
-						prioritizedOrders = append([]int{curCabOrder}, prioritizedOrders...)
-						break
-					}
-
-					// if both orders in same dir and neworder closer than lastOrder
-					if lastOrderDirection == curCabOrderDirection {
-						newOrderDistance := int(math.Abs(float64(lastFloor - curCabOrder)))
-						lastOrderDistance := int(math.Abs(float64(lastFloor - lastOrder)))
-						if newOrderDistance < lastOrderDistance {
-							prioritizedOrders = append([]int{curCabOrder}, prioritizedOrders...)
+						// if lastOrder not in direction but neworder is
+						if (direction != elevio.MD_Stop) && (lastOrderDirection != direction) && (curCabOrderDirection == direction) {
+							prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+							break
 						}
-					}
 
-					// Give new order lowest priority
-					if i == (len(prioritizedOrders) - 1) {
-						prioritizedOrders = append(prioritizedOrders, curCabOrder)
+						// if both orders in same dir and neworder closer than lastOrder
+						if lastOrderDirection == curCabOrderDirection {
+							newOrderDistance := int(math.Abs(float64(lastFloor - curCabOrder)))
+							lastOrderDistance := int(math.Abs(float64(lastFloor - lastOrder)))
+							if newOrderDistance < lastOrderDistance {
+								prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+							}
+						}
+
+						// Give new order lowest priority
+						if i == (len(prioritizedOrders) - 1) {
+							prioritizedOrders = append(prioritizedOrders, orderDestination)
+						}
 					}
 				}
 			}
+			fmt.Println("NEW PRIO (CAB): ", prioritizedOrders)
 		}
 	}
 
-	
 }
 
 func CompleteCurrentOrder() {
+	fmt.Println("REMOVED COMPLETED ORDER")
+	fmt.Println("OLD PRIO.: ", prioritizedOrders)
 	prioritizedOrders = prioritizedOrders[1:]
-}
-
-func getDirectionAndFloor(positions [3]int) (int, int) {
-	bin := tools.ArrayToString(positions)
-	lastFloor, _ := strconv.ParseInt(bin, 0, 64)
-	direction := positions[0]*(-1) + positions[1]*(0) + positions[2]*(1)
-	if direction == 0 && positions[1] == 0 {
-		direction = 11
-	}
-
-	return direction, int(lastFloor)
+	fmt.Println("NEW PRIO.: ", prioritizedOrders)
 }
 
 func GetCurrentOrder() int {

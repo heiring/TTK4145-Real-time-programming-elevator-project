@@ -6,12 +6,18 @@ import (
 	"./elevio"
 	"./network/bcast"
 	"./network/network2"
+	//"./fsm"
 )
 
 func main() {
+	/*
+		fsm.FSM(1)
+		for true {
 
+		}
+	*/
 	//initialization for simulator
-	numFloors := 3
+	numFloors := 4
 	ID := os.Args[1]
 	elevio.Init("localhost:"+ID, numFloors)
 
@@ -25,7 +31,7 @@ func main() {
 	lostIDCh := make(chan string)
 
 	go network2.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, 5000)
-	go network2.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, 20, lostIDCh, 4)
+	go network2.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, 10, lostIDCh, 4)
 
 	go bcast.Transmitter(19569, elevatorStateTxCh)
 	go bcast.Receiver(19569, elevatorStateRxCh)
