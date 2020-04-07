@@ -6,7 +6,8 @@ import (
 
 	"./config"
 	"./elevio"
-	"./network/bcast"
+
+	//"./network/bcast"
 	"./network/network2"
 	//"flag"
 	//"./fsm"
@@ -28,25 +29,11 @@ func main() {
 	ID := os.Args[1]
 	elevio.Init("localhost:"+ID, numFloors)
 
-	//network test
-	elevatorStateTxCh := make(chan network2.ElevatorState)
-	elevatorStateRxCh := make(chan network2.ElevatorState)
-
 	transmitPacketCh := make(chan network2.ElevatorState)
 	stateUpdateCh := make(chan network2.ElevatorState)
-
-	lostIDCh := make(chan string)
-	lifeSignalIDCh := make(chan string)
-
 	activeElevatorsCh := make(chan map[string]bool)
 
-	go network2.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, config.TRANSMIT_INTERVAL)
-	go network2.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, lostIDCh, lifeSignalIDCh, config.ELEVATOR_TIMEOUT, config.LAST_UPDATE_INTERVAL)
-
-	go bcast.Transmitter(19569, elevatorStateTxCh)
-	go bcast.Receiver(19569, elevatorStateRxCh)
-
-	go network2.MonitorActiveElevators(lostIDCh, lifeSignalIDCh, activeElevatorsCh)
+	go network2.RunNetwork(transmitPacketCh, stateUpdateCh, activeElevatorsCh, config.TRANSMIT_INTERVAL, config.ELEVATOR_TIMEOUT, config.LAST_UPDATE_INTERVAL, config.TRANSMIT_PORT)
 
 	msg := network2.ElevatorState{ID: ID}
 
