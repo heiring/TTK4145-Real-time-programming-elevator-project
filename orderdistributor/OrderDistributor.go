@@ -5,11 +5,10 @@ import (
 	"math"
 	"time"
 
+	"../config"
 	"../elevio"
 	"../tools"
 )
-
-const pollRate = 20 * time.Millisecond
 
 var prioritizedOrders = make([]int, 0)
 
@@ -112,7 +111,7 @@ func PollOrders(receiver chan<- int) {
 	var prevOrder int
 	init := true
 	for {
-		time.Sleep(pollRate)
+		time.Sleep(config.PollRate)
 		order := GetOrderFloor()
 		if (order != prevOrder && order != -1) || (order == -1 && init) {
 			fmt.Println("Sending order...")

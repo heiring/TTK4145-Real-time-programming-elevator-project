@@ -6,8 +6,8 @@ import (
 
 //ElevatorState ...
 type ElevatorState struct {
-	ID string
-	//state table
+	ID         string
+	StateTable [7][9]int
 }
 
 //BroadcastElevatorState broadcasts elevator state. Sends packets to be sent to transmission channel

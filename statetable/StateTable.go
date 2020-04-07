@@ -3,85 +3,88 @@ package statetable
 import (
 	"fmt"
 
+	"../network/network2"
 	"../orderdistributor"
 )
 
 var stateTable [7][9]int
+var elevNr int
 
 const UnknownFloor int = -1
 
-func InitStateTable(elev_nr int) {
+func InitStateTable(elevnr, port int) {
+	elevNr = elevnr
 	fmt.Println("InitStateTable")
 	for row, cells := range stateTable {
 		for _, col := range cells {
-			stateTable[row][col] = 0
+			// stateTable[row][col] = 0
+			UpdateStateTableIndex(row, col, 0, false)
 		}
 	}
 	// Unknown starting position
-	stateTable[2][elev_nr*3+1] = UnknownFloor
-
+	// stateTable[2][elevNr*3+1] = UnknownFloor
+	UpdateStateTableIndex(2, 1, UnknownFloor, false)
+	// Set ID = port
+	UpdateStateTableIndex(0, 1, port, false)
 }
 
-func UpdateStateTableIndex(row, col, elev_nr, val int) {
-	stateTable[row][col+elev_nr*3] = val
-
-	// If orders have changed calculate again
-	if row > 2 && row < 7 {
-		// To do: figure out slicing, current code is wrong. This is not python
-		var orders [4][3]int
-		for row := range orders {
-			for col := range orders[row] {
-				orders[row][col] = stateTable[3+row][col+3*elev_nr]
+func UpdateEntireStateTable(elevState network2.ElevatorState) {
+	for row, cells := range elevState.StateTable {
+		for _, col := range cells {
+			if !(row <= 2 && col == (elevNr*3+1)) {
+				UpdateStateTableIndex(row, col, cells[col], false)
 			}
 		}
-		position := stateTable[2][elev_nr*3+1]
-		direction := stateTable[1][elev_nr*3+1]
-		orderdistributor.DistributeOrders(orders, position, direction)
+	}
+	runOrderDistribution()
+}
+
+func UpdateStateTableIndex(row, col, val int, runDistribution bool) {
+	stateTable[row][col+elevNr*3] = val
+	if runDistribution {
+		runOrderDistribution()
+		// To do: Send StateTable
+		var elevState network2.ElevatorState
+		elevState.ID = getCurrentID()
+		elevState.StateTable = stateTable
 	}
 }
 
-func UpdateElevLastFLoor(elev_nr, val int) {
-	// ResetElevRow(elev_nr, 2)
+func runOrderDistribution() {
+	var orders [4][3]int
+	for row := range orders {
+		for col := range orders[row] {
+			orders[row][col] = stateTable[3+row][col+3*elevNr]
+		}
+	}
+	position := stateTable[2][elevNr*3+1]
+	direction := stateTable[1][elevNr*3+1]
+	orderdistributor.DistributeOrders(orders, position, direction)
+}
+
+func UpdateElevLastFLoor(val int) {
 	fmt.Println("UpdateElevLastFLoor, val: ", val)
-	stateTable[2][elev_nr*3+1] = val
-	// // val in [0, 3]
-	// // convert to binary [001, 100]
-	// binaryVal := strconv.FormatInt(int64(val), 2)
-	// for len(binaryVal) < 3 {
-	// 	binaryVal = "0" + binaryVal
-	// }
-	// for col := 0; col < 3; col++ {
-	// 	stateTable[2][elev_nr*3+col] = int(binaryVal[col])
-	// }
-	// fmt.Println("binaryVal: ", binaryVal)
+	// stateTable[2][elevNr*3+1] = val
+	UpdateStateTableIndex(2, 1, val, false)
 }
 
 // UpdateElevDirection comment
-func UpdateElevDirection(elev_nr, val int) {
-	// ResetElevRow(elev_nr, 1)
-	stateTable[1][elev_nr*3+1] = val
-	// val = -1, 0, 1
-	// if val == -1 {
-	// 	stateTable[2][0] = 1
-	// } else if val == 0 {
-	// 	stateTable[2][1] = 1
-	// } else if val == 1 {
-	// 	stateTable[2][2] = 1
-	// } else {
-	// 	fmt.Println("ERROR! Could not update elev direction")
-	// }
-
+func UpdateElevDirection(val int) {
+	// stateTable[1][elevNr*3+1] = val
+	UpdateStateTableIndex(1, 1, val, false)
 }
 
-func ResetElevRow(elev_nr, row int) {
+func ResetElevRow(row int) {
 	for col := 0; col < 3; col++ {
-		stateTable[row][col+elev_nr*3] = 0
+		UpdateStateTableIndex(row, col, 0, false)
+		// stateTable[row][col+elevNr*3] = 0
 	}
 }
 
 func ResetRow(row int) {
 	for col := 0; col < 9; col++ {
-		stateTable[row][col] = 0
+		UpdateStateTableIndex(row, col, 0, false)
+		// stateTable[row][col] = 0
 	}
 }
 
@@ -112,4 +115,8 @@ func GetCurrentFloor(elev_nr int) int {
 	// return int(lastFloor)
 	floor := stateTable[2][elev_nr*3+1]
 	return floor
+}
+
+func getCurrentID() string {
+	return string(stateTable[0][elevNr*3+1])
 }
