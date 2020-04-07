@@ -12,7 +12,7 @@ type ElevatorState struct {
 
 //BroadcastElevatorState broadcasts elevator state. Sends packets to be sent to transmission channel
 func BroadcastElevatorState(transmitPacketCh <-chan ElevatorState, elevatorStateTxCh chan<- ElevatorState, transmitInterval time.Duration) {
-	transmissionTicker := time.NewTicker(transmitInterval * time.Millisecond)
+	transmissionTicker := time.NewTicker(transmitInterval)
 	elevatorStateTx := <-transmitPacketCh
 
 	for {
@@ -28,10 +28,10 @@ func BroadcastElevatorState(transmitPacketCh <-chan ElevatorState, elevatorState
 }
 
 //ListenElevatorState listens for elevator state packets, sends to update channel if necessary
-func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh chan<- ElevatorState, timeoutns time.Duration, lostIDCh chan<- string, offlineTickerIntervalns time.Duration, lifeSignalIDCh chan<- string) {
+func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh chan<- ElevatorState, lostIDCh chan<- string, lifeSignalIDCh chan<- string, timeout time.Duration, offlineTickerInterval time.Duration) {
 	//convert ns to s
-	timeout := timeoutns * 1000000000
-	offlineTickerInterval := offlineTickerIntervalns * 1000000000
+	//timeout := timeoutns * time.Millisecond
+	//offlineTickerInterval := offlineTickerIntervalns * 1000000000
 
 	//ticker to check for elevators gone offline
 	ticker := time.NewTicker(offlineTickerInterval)

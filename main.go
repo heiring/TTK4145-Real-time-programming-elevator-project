@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"./config"
 	"./elevio"
 	"./network/bcast"
 	"./network/network2"
@@ -34,8 +35,8 @@ func main() {
 
 	activeElevatorsCh := make(chan map[string]bool)
 
-	go network2.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, 5000)
-	go network2.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, 10, lostIDCh, 4, lifeSignalIDCh)
+	go network2.BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, config.TRANSMIT_INTERVAL)
+	go network2.ListenElevatorState(elevatorStateRxCh, stateUpdateCh, lostIDCh, lifeSignalIDCh, config.ELEVATOR_TIMEOUT, config.LAST_UPDATE_INTERVAL)
 
 	go bcast.Transmitter(19569, elevatorStateTxCh)
 	go bcast.Receiver(19569, elevatorStateRxCh)
