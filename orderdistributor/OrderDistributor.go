@@ -3,18 +3,17 @@ package orderdistributor
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"../elevio"
 	"../tools"
 )
 
+const pollRate = 20 * time.Millisecond
+
 var prioritizedOrders = make([]int, 0)
 
 func DistributeOrders(orders [4][3]int, lastFloor, direction int) {
-	fmt.Println("DistributeOrders")
-	fmt.Println("prioritizedOrders: ", prioritizedOrders)
-	fmt.Println("len: ", len(prioritizedOrders))
-	fmt.Println("orders: ", orders)
 
 	for row := 0; row < 4; row++ {
 		curHallUpOrder := orders[row][elevio.BT_HallUp]
@@ -73,9 +72,8 @@ func DistributeOrders(orders [4][3]int, lastFloor, direction int) {
 		// Cab buttons
 		if curCabOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
 			if len(prioritizedOrders) <= 0 {
-				fmt.Println("0 len")
 				prioritizedOrders = append(prioritizedOrders, orderDestination)
-				fmt.Println("NEW ORDER APPENDED (CAB): ", curCabOrder)
+				fmt.Println("NEW ORDER APPENDED (CAB): ", orderDestination)
 			} else {
 				for i, lastOrder := range prioritizedOrders {
 					if !tools.IntInSlice(orderDestination, prioritizedOrders) {
@@ -110,6 +108,23 @@ func DistributeOrders(orders [4][3]int, lastFloor, direction int) {
 
 }
 
+func PollOrders(receiver chan<- int) {
+	var prevOrder int
+	init := true
+	for {
+		time.Sleep(pollRate)
+		order := GetOrderFloor()
+		if (order != prevOrder && order != -1) || (order == -1 && init) {
+			fmt.Println("Sending order...")
+			receiver <- order
+			if init {
+				init = false
+			}
+		}
+		prevOrder = order
+	}
+}
+
 func CompleteCurrentOrder() {
 	fmt.Println("REMOVED COMPLETED ORDER")
 	fmt.Println("OLD PRIO.: ", prioritizedOrders)
@@ -117,7 +132,7 @@ func CompleteCurrentOrder() {
 	fmt.Println("NEW PRIO.: ", prioritizedOrders)
 }
 
-func GetCurrentOrder() int {
+func GetOrderFloor() int {
 	if len(prioritizedOrders) > 0 {
 		return prioritizedOrders[0]
 	}

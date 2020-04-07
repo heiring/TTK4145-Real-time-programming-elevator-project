@@ -8,17 +8,22 @@ import (
 	"./elevio"
 	"./network/bcast"
 	"./network/network2"
+	//"flag"
 	//"./fsm"
 )
 
 func main() {
-	/*
-		fsm.FSM(1)
-		for true {
+	//var id int
+	//var port string
+	//lag.IntVar(&id, "id", 1, "Specify the id nr for the elevator")
+	//flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
+	//flag.Parse()
 
-		}
-	*/
-	//initialization for simulator
+	//fsm.FSM(id, port)
+	//for true {
+
+	//}
+	// 	//initialization for simulator
 	numFloors := 4
 	ID := os.Args[1]
 	elevio.Init("localhost:"+ID, numFloors)
