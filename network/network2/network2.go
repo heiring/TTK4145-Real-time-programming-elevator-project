@@ -9,11 +9,11 @@ import (
 //ElevatorState ...
 type ElevatorState struct {
 	ID         string
-	stateTable [7][9]int
+	StateTable [7][9]int
 }
 
 func transmitStateTable(stateTable [7][9]int, ID string, transmitPacketCh chan<- ElevatorState) {
-	statePacket := ElevatorState{ID: ID, stateTable: stateTable}
+	statePacket := ElevatorState{ID: ID, StateTable: stateTable}
 	transmitPacketCh <- statePacket
 }
 
