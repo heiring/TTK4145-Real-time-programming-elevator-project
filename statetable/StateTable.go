@@ -56,6 +56,7 @@ func UpdateElevLastFLoor(elev_nr, val int) {
 	// fmt.Println("binaryVal: ", binaryVal)
 }
 
+// UpdateElevDirection comment
 func UpdateElevDirection(elev_nr, val int) {
 	// ResetElevRow(elev_nr, 1)
 	stateTable[1][elev_nr*3+1] = val

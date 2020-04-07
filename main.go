@@ -6,12 +6,19 @@ import (
 	// "./elevio"
 	// "./network/bcast"
 	// "./network/network2"
+	"flag"
+
 	"./fsm"
 )
 
 func main() {
+	var id int
+	var port string
+	flag.IntVar(&id, "id", 1, "Specify the id nr for the elevator")
+	flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
+	flag.Parse()
 
-	fsm.FSM(1)
+	fsm.FSM(id, port)
 	for true {
 
 	}
