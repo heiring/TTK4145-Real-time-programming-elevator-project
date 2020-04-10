@@ -162,3 +162,7 @@ func GetCurrentFloor(elev_nr int) int {
 func getCurrentID() string {
 	return string(stateTable[0][elevNr*3+1])
 }
+
+func Get() [7][9]int {
+	return stateTable
+}
