@@ -1,36 +1,40 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	. "./config"
 	"./elevio"
+	"./fsm"
 	"./packetprocessor"
+	"./statetable"
 )
 
 func main() {
-	/*
-		var elevNr int
-		var port string
-		flag.IntVar(&elevNr, "elevNr", 1, "Specify the elevator nr")
-		flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
-		flag.Parse()
 
-		numFloors := 4
-		ip := "localhost:" + port
+	var elevNr int
+	var port string
+	flag.IntVar(&elevNr, "elevNr", 1, "Specify the elevator nr")
+	flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
+	flag.Parse()
 
-		intport, _ := strconv.Atoi(port)
-		statetable.InitStateTable(elevNr, intport)
-		// network2.Init(transmitPacketCh)
-		elevio.Init(ip, numFloors)
-		fsm.InitFSM(elevNr)
-		for true {
-
-		}
-	*/
-	//initialization for simulator
 	numFloors := 4
+	ip := "localhost:" + port
+
+	intport, _ := strconv.Atoi(port)
+	statetable.InitStateTable(elevNr, intport)
+	// network2.Init(transmitPacketCh)
+	elevio.Init(ip, numFloors)
+	fsm.InitFSM(elevNr)
+	for true {
+
+	}
+
+	//initialization for simulator
+	//	numFloors := 4
 	ID := os.Args[1]
 	elevio.Init("localhost:"+ID, numFloors)
 
