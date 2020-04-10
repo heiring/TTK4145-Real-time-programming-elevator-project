@@ -1,63 +1,60 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
-	"strconv"
 
 	. "./config"
 	"./elevio"
-	"./fsm"
-	"./network2"
-	"./statetable"
+	"./packetprocessor"
 )
 
 func main() {
+	/*
+		var elevNr int
+		var port string
+		flag.IntVar(&elevNr, "elevNr", 1, "Specify the elevator nr")
+		flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
+		flag.Parse()
 
-	var elevNr int
-	var port string
-	flag.IntVar(&elevNr, "elevNr", 1, "Specify the elevator nr")
-	flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
-	flag.Parse()
+		numFloors := 4
+		ip := "localhost:" + port
 
-	numFloors := 4
-	ip := "localhost:" + port
+		intport, _ := strconv.Atoi(port)
+		statetable.InitStateTable(elevNr, intport)
+		// network2.Init(transmitPacketCh)
+		elevio.Init(ip, numFloors)
+		fsm.InitFSM(elevNr)
+		for true {
 
-	intport, _ := strconv.Atoi(port)
-	statetable.InitStateTable(elevNr, intport)
-	// network2.Init(transmitPacketCh)
-	elevio.Init(ip, numFloors)
-	fsm.InitFSM(elevNr)
-	for true {
-
-	}
-
+		}
+	*/
 	//initialization for simulator
-	//numFloors := 4
+	numFloors := 4
 	ID := os.Args[1]
 	elevio.Init("localhost:"+ID, numFloors)
 
-	transmitPacketCh := make(chan ElevatorState)
-	stateUpdateCh := make(chan ElevatorState)
+	transmitStateCh := make(chan ElevatorState)
+	receiveStateCh := make(chan ElevatorState)
 	activeElevatorsCh := make(chan map[string]bool)
 
-	go network2.RunNetwork(transmitPacketCh, stateUpdateCh, activeElevatorsCh, TRANSMIT_INTERVAL, ELEVATOR_TIMEOUT, LAST_UPDATE_INTERVAL, TRANSMIT_PORT)
+	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 
 	msg := ElevatorState{ID: ID}
 
 	for {
-		transmitPacketCh <- msg
+		transmitStateCh <- msg
 		select {
-		case y := <-stateUpdateCh:
+		case y := <-receiveStateCh:
 			//fmt.Println("main : packet received")
 			//fmt.Println(y.ID)
 			y.ID = "1111"
 		case activeElevators := <-activeElevatorsCh:
 			for ID, isAlive := range activeElevators {
-				fmt.Println(ID)
+				fmt.Printf(ID + ": ")
 				fmt.Println(isAlive)
 			}
+			fmt.Printf("\n")
 		default:
 			//do stuff
 		}

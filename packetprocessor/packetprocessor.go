@@ -1,4 +1,4 @@
-package network2
+package packetprocessor
 
 import (
 	"time"
@@ -8,19 +8,19 @@ import (
 	"../network/bcast"
 )
 
-func transmitStateTable(stateTable [7][9]int, ID string, transmitPacketCh chan<- ElevatorState) {
+func transmitStateTable(stateTable [7][9]int, ID string, transmitStateCh chan<- ElevatorState) {
 	statePacket := ElevatorState{ID: ID, StateTable: stateTable}
-	transmitPacketCh <- statePacket
+	transmitStateCh <- statePacket
 }
 
 //BroadcastElevatorState broadcasts elevator state with a given interval.
-func BroadcastElevatorState(transmitPacketCh <-chan ElevatorState, elevatorStateTxCh chan<- ElevatorState, transmitInterval time.Duration) {
+func BroadcastElevatorState(transmitStateCh <-chan ElevatorState, elevatorStateTxCh chan<- ElevatorState, transmitInterval time.Duration) {
 	transmissionTicker := time.NewTicker(transmitInterval)
-	elevatorStateTx := <-transmitPacketCh
+	elevatorStateTx := <-transmitStateCh
 	for {
 		select {
-		case transmitPacket := <-transmitPacketCh:
-			elevatorStateTx = transmitPacket
+		case transmitState := <-transmitStateCh:
+			elevatorStateTx = transmitState
 		case <-transmissionTicker.C:
 			elevatorStateTxCh <- elevatorStateTx
 		default:
@@ -30,7 +30,7 @@ func BroadcastElevatorState(transmitPacketCh <-chan ElevatorState, elevatorState
 }
 
 //ListenElevatorState listens for elevator state packets, sends to update channel if necessary
-func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh chan<- ElevatorState, lostIDCh chan<- string, lifeSignalIDCh chan<- string, timeout time.Duration, offlineTickerInterval time.Duration) {
+func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, receiveStateCh chan<- ElevatorState, lostIDCh chan<- string, lifeSignalIDCh chan<- string, timeout time.Duration, offlineTickerInterval time.Duration) {
 
 	//ticker to check for elevators gone offline
 	ticker := time.NewTicker(offlineTickerInterval)
@@ -45,7 +45,7 @@ func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh c
 
 			receivedPacket = newPacket
 			lastUpdate[receivedPacket.ID] = time.Now()
-			stateUpdateCh <- receivedPacket
+			receiveStateCh <- receivedPacket
 			lifeSignalIDCh <- receivedPacket.ID
 		case <-ticker.C:
 			for ID, t := range lastUpdate {
@@ -64,8 +64,10 @@ func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, stateUpdateCh c
 }
 
 //MonitorActiveElevators outputs (on a channel) a map with elevator IDs as keys and bools, indicating if they're active or not, as values
-func MonitorActiveElevators(lostIDCh <-chan string, lifeSignalIDCh <-chan string, activeElevatorsCh chan<- map[string]bool) {
+func MonitorActiveElevators(lostIDCh <-chan string, lifeSignalIDCh <-chan string, activeElevatorsCh chan<- map[string]bool, activeElevatorsTransmitInterval time.Duration) {
 	activeElevators := make(map[string]bool)
+	emptyMap := true
+	ticker := time.NewTicker(activeElevatorsTransmitInterval)
 	for {
 		select {
 		case lifeSignalID := <-lifeSignalIDCh:
@@ -77,6 +79,7 @@ func MonitorActiveElevators(lostIDCh <-chan string, lifeSignalIDCh <-chan string
 			} else {
 				activeElevators[lifeSignalID] = true
 				activeElevatorsCh <- activeElevators
+				emptyMap = false
 			}
 
 		case lostID := <-lostIDCh:
@@ -86,25 +89,30 @@ func MonitorActiveElevators(lostIDCh <-chan string, lifeSignalIDCh <-chan string
 					activeElevatorsCh <- activeElevators
 				}
 			}
+		case <-ticker.C:
+			if !emptyMap {
+				activeElevatorsCh <- activeElevators
+			}
+
 		default:
 			//do stuff
 		}
 	}
 }
-func RunNetwork(transmitPacketCh <-chan ElevatorState, stateUpdateCh chan<- ElevatorState, activeElevatorsCh chan<- map[string]bool, TRANSMIT_INTERVAL time.Duration,
-	ELEVATOR_TIMEOUT time.Duration, LAST_UPDATE_INTERVAL time.Duration, TRANSMIT_PORT int) {
+func PacketInterchange(transmitStateCh <-chan ElevatorState, receiveStateCh chan<- ElevatorState, activeElevatorsCh chan<- map[string]bool, StateTransmissionInterval time.Duration,
+	ElevatorTimeout time.Duration, LastUpdateInterval time.Duration, activeElevatorsTransmitInterval time.Duration, TransmissionPort int) {
 	elevatorStateTxCh := make(chan ElevatorState)
 	elevatorStateRxCh := make(chan ElevatorState)
 
 	lostIDCh := make(chan string)
 	lifeSignalIDCh := make(chan string)
 
-	go BroadcastElevatorState(transmitPacketCh, elevatorStateTxCh, TRANSMIT_INTERVAL)
-	go ListenElevatorState(elevatorStateRxCh, stateUpdateCh, lostIDCh, lifeSignalIDCh, ELEVATOR_TIMEOUT, LAST_UPDATE_INTERVAL)
+	go BroadcastElevatorState(transmitStateCh, elevatorStateTxCh, StateTransmissionInterval)
+	go ListenElevatorState(elevatorStateRxCh, receiveStateCh, lostIDCh, lifeSignalIDCh, ElevatorTimeout, LastUpdateInterval)
 
-	go bcast.Transmitter(TRANSMIT_PORT, elevatorStateTxCh)
-	go bcast.Receiver(TRANSMIT_PORT, elevatorStateRxCh)
+	go bcast.Transmitter(TransmissionPort, elevatorStateTxCh)
+	go bcast.Receiver(TransmissionPort, elevatorStateRxCh)
 
-	go MonitorActiveElevators(lostIDCh, lifeSignalIDCh, activeElevatorsCh)
+	go MonitorActiveElevators(lostIDCh, lifeSignalIDCh, activeElevatorsCh, activeElevatorsTransmitInterval)
 
 }
