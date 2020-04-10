@@ -3,35 +3,26 @@ package network2
 import (
 	"time"
 
-	"../bcast"
-)
+	. "../config"
 
-//ElevatorState ...
-type ElevatorState struct {
-	ID         string
-	StateTable [7][9]int
-}
+	"../network/bcast"
+)
 
 func transmitStateTable(stateTable [7][9]int, ID string, transmitPacketCh chan<- ElevatorState) {
 	statePacket := ElevatorState{ID: ID, StateTable: stateTable}
 	transmitPacketCh <- statePacket
 }
 
-//BroadcastElevatorState broadcasts elevator state. Sends packets to be sent to transmission channel
+//BroadcastElevatorState broadcasts elevator state with a given interval.
 func BroadcastElevatorState(transmitPacketCh <-chan ElevatorState, elevatorStateTxCh chan<- ElevatorState, transmitInterval time.Duration) {
 	transmissionTicker := time.NewTicker(transmitInterval)
 	elevatorStateTx := <-transmitPacketCh
-	newPacket := true
 	for {
 		select {
 		case transmitPacket := <-transmitPacketCh:
 			elevatorStateTx = transmitPacket
-			newPacket = true
 		case <-transmissionTicker.C:
-			if newPacket {
-				elevatorStateTxCh <- elevatorStateTx
-				newPacket = false
-			}
+			elevatorStateTxCh <- elevatorStateTx
 		default:
 			//do stuff
 		}
@@ -78,26 +69,20 @@ func MonitorActiveElevators(lostIDCh <-chan string, lifeSignalIDCh <-chan string
 	for {
 		select {
 		case lifeSignalID := <-lifeSignalIDCh:
-			//is the elevator ID a key in the map?
 			if mapValue, ok := activeElevators[lifeSignalID]; ok {
-				//is an elevator back online?
 				if !mapValue {
 					activeElevators[lifeSignalID] = true
-					//the set of active elevators has changed
 					activeElevatorsCh <- activeElevators
 				}
-			} else { //the elevator ID is not a key in the map
+			} else {
 				activeElevators[lifeSignalID] = true
-				//the set of active elevators has changed
 				activeElevatorsCh <- activeElevators
 			}
 
 		case lostID := <-lostIDCh:
-			//is the elevator ID a key in the map?
 			if mapValue, ok := activeElevators[lostID]; ok {
 				if mapValue {
 					activeElevators[lostID] = false
-					//the set of active elevators has changed
 					activeElevatorsCh <- activeElevators
 				}
 			}

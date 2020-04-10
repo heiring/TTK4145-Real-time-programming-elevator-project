@@ -6,14 +6,15 @@ import (
 	"os"
 	"strconv"
 
-	"./config"
+	. "./config"
 	"./elevio"
 	"./fsm"
-	"./network/network2"
+	"./network2"
 	"./statetable"
 )
 
 func main() {
+
 	var elevNr int
 	var port string
 	flag.IntVar(&elevNr, "elevNr", 1, "Specify the elevator nr")
@@ -32,18 +33,18 @@ func main() {
 
 	}
 
-	// 	//initialization for simulator
+	//initialization for simulator
 	//numFloors := 4
 	ID := os.Args[1]
 	elevio.Init("localhost:"+ID, numFloors)
 
-	transmitPacketCh := make(chan network2.ElevatorState)
-	stateUpdateCh := make(chan network2.ElevatorState)
+	transmitPacketCh := make(chan ElevatorState)
+	stateUpdateCh := make(chan ElevatorState)
 	activeElevatorsCh := make(chan map[string]bool)
 
-	go network2.RunNetwork(transmitPacketCh, stateUpdateCh, activeElevatorsCh, config.TRANSMIT_INTERVAL, config.ELEVATOR_TIMEOUT, config.LAST_UPDATE_INTERVAL, config.TRANSMIT_PORT)
+	go network2.RunNetwork(transmitPacketCh, stateUpdateCh, activeElevatorsCh, TRANSMIT_INTERVAL, ELEVATOR_TIMEOUT, LAST_UPDATE_INTERVAL, TRANSMIT_PORT)
 
-	msg := network2.ElevatorState{ID: ID}
+	msg := ElevatorState{ID: ID}
 
 	for {
 		transmitPacketCh <- msg

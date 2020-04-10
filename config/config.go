@@ -9,3 +9,14 @@ const (
 	TRANSMIT_PORT        = 19569
 	PollRate             = 20 * time.Millisecond
 )
+
+type orderDistributionChannels struct {
+	stateUpdateCh    chan ElevatorState
+	transmitPacketCh chan ElevatorState
+	activeElevators  chan map[string]bool
+}
+
+type ElevatorState struct {
+	ID         string
+	StateTable [7][9]int
+}

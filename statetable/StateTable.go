@@ -3,7 +3,7 @@ package statetable
 import (
 	"fmt"
 
-	"../network/network2"
+	. "../config"
 	"../orderdistributor"
 )
 
@@ -28,7 +28,7 @@ func InitStateTable(elevnr, port int) {
 	UpdateStateTableIndex(0, 1, port, false)
 }
 
-func UpdateEntireStateTable(elevState network2.ElevatorState) {
+func UpdateEntireStateTable(elevState ElevatorState) {
 	for row, cells := range elevState.StateTable {
 		for _, col := range cells {
 			if !(row <= 2 && col == (elevNr*3+1)) {
@@ -44,7 +44,7 @@ func UpdateStateTableIndex(row, col, val int, runDistribution bool) {
 	if runDistribution {
 		runOrderDistribution()
 		// To do: Send StateTable
-		var elevState network2.ElevatorState
+		var elevState ElevatorState
 		elevState.ID = getCurrentID()
 		elevState.StateTable = stateTable
 	}
