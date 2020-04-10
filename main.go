@@ -1,16 +1,13 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
-	"strconv"
-
+	"./statetable"
 	. "./config"
 	"./elevio"
 	"./fsm"
 	"./packetprocessor"
-	"./statetable"
 )
 
 func main() {
@@ -21,20 +18,20 @@ func main() {
 	flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
 	flag.Parse()
 
-	numFloors := 4
+	//numFloors := 4
 	ip := "localhost:" + port
 
 	intport, _ := strconv.Atoi(port)
 	statetable.InitStateTable(elevNr, intport)
-	// network2.Init(transmitPacketCh)
+	// network2.stateTable[row][col+elevNr*3] = valInit(transmitPacketCh)
 	elevio.Init(ip, numFloors)
-	fsm.InitFSM(elevNr)
+	fsm.InitFSM(elevNr,transmitStateTableCh)
 	for true {
 
 	}
 
 	//initialization for simulator
-	//	numFloors := 4
+	numFloors := 4
 	ID := os.Args[1]
 	elevio.Init("localhost:"+ID, numFloors)
 
@@ -44,6 +41,16 @@ func main() {
 
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 
+	
+	stateTableTransmitCh := make(chan [7][9])
+	go statetable.UpdateStateTableFromPacket(receiveStateCh)
+	go statetable.StateTransmit(transmitStateCh, ID, stateTableTransmitCh)
+	go statetable.UpdateActiveElevators(activeElevatorsCh)
+	
+	
+	
+	
+	
 	msg := ElevatorState{ID: ID}
 
 	for {

@@ -39,15 +39,57 @@ func UpdateEntireStateTable(elevState ElevatorState) {
 	runOrderDistribution()
 }
 
-func UpdateStateTableIndex(row, col, val int, runDistribution bool) {
+func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
+	for {
+		select {
+		case elevState := <-receiveStateCh:
+			for row, cells := range elevState.StateTable {
+				for _, col := range cells {
+					if !(row <= 2 && col == (elevNr*3+1)) {
+						stateTable[row][col+elevNr*3] = cells[col]
+					}
+				}
+			}
+		default:
+			//do stuff
+		}
+	}
+	runOrderDistribution()
+}
+
+func TransmitState(stateTableTransmitCh <-chan [7][9]int, ID string, transmitStateCh chan<- ElevatorState) {
+	for {
+		select {
+		case stateTable := <-stateTableTransmitCh:
+			elevatorState := ElevatorState{ID: ID, StateTable: stateTable}
+			transmitStateCh <- elevatorState
+		default:
+			//do nothing
+		}
+	}
+}
+
+func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
+	for {
+		select {
+		case activeElevators := <-activeElevatorsCh: //pakker kommer regelmessig
+			//update state table
+			activeElevators["simon er teit"] = true
+		default:
+			//do nothing
+		}
+	}
+	runOrderDistribution()
+}
+
+func UpdateStateTableIndex(row, col, val int, runDistribution bool) { // stateTableTransmitCh chan<- [7][9]int) {
 	stateTable[row][col+elevNr*3] = val
 	if runDistribution {
 		runOrderDistribution()
-		// To do: Send StateTable
-		var elevState ElevatorState
-		elevState.ID = getCurrentID()
-		elevState.StateTable = stateTable
+		//stateTableTransmitCh <- stateTable
+
 	}
+
 }
 
 func runOrderDistribution() {
