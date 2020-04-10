@@ -73,8 +73,7 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 	for {
 		select {
 		case activeElevators := <-activeElevatorsCh: //pakker kommer regelmessig
-			//update state table
-			activeElevators["simon er teit"] = true
+
 		default:
 			//do nothing
 		}

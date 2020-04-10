@@ -18,13 +18,14 @@ func main() {
 	flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
 	flag.Parse()
 
-	//numFloors := 4
+	numFloors := 4
 	ip := "localhost:" + port
 
 	intport, _ := strconv.Atoi(port)
 	statetable.InitStateTable(elevNr, intport)
 	// network2.stateTable[row][col+elevNr*3] = valInit(transmitPacketCh)
 	elevio.Init(ip, numFloors)
+	
 	fsm.InitFSM(elevNr,transmitStateTableCh)
 	for true {
 
