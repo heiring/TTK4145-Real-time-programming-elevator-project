@@ -74,7 +74,17 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 		select {
 		case activeElevators := <-activeElevatorsCh: //pakker kommer regelmessig
 			//update state table
-			activeElevators["simon er teit"] = true
+			for ID, isAlive := range activeElevators {
+				for index := 0; index < 3; index++ {
+					if ID == string(stateTable[0][1+index*3]) {
+						if isAlive {
+							UpdateStateTableIndex(0, (index * 3), 1, true)
+						} else {
+							UpdateStateTableIndex(0, (index * 3), 0, true)
+						}
+					}
+				}
+			}
 		default:
 			//do nothing
 		}

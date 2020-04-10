@@ -32,13 +32,13 @@ func main() {
 	receiveStateCh := make(chan ElevatorState)
 	activeElevatorsCh := make(chan map[string]bool)
 
+	fsm.InitFSM(elevNr, stateTableTransmitCh)
+
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 
 	go statetable.UpdateStateTableFromPacket(receiveStateCh)
 	go statetable.TransmitState(stateTableTransmitCh, port, transmitStateCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
-
-	fsm.InitFSM(elevNr, stateTableTransmitCh)
 	for true {
 
 	}
