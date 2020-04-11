@@ -1,13 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"./statetable"
+	"flag"
+	"strconv"
+
 	. "./config"
 	"./elevio"
 	"./fsm"
 	"./packetprocessor"
+	"./statetable"
 )
 
 func main() {
@@ -25,50 +26,56 @@ func main() {
 	statetable.InitStateTable(elevNr, intport)
 	// network2.stateTable[row][col+elevNr*3] = valInit(transmitPacketCh)
 	elevio.Init(ip, numFloors)
-	
-	fsm.InitFSM(elevNr,transmitStateTableCh)
+
+	transmitStateCh := make(chan ElevatorState)
+	stateTableTransmitCh := make(chan [7][9]int)
+	receiveStateCh := make(chan ElevatorState)
+	activeElevatorsCh := make(chan map[string]bool)
+
+	fsm.InitFSM(elevNr, stateTableTransmitCh)
+
+	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
+
+	go statetable.UpdateStateTableFromPacket(receiveStateCh)
+	go statetable.TransmitState(stateTableTransmitCh, port, transmitStateCh)
+	go statetable.UpdateActiveElevators(activeElevatorsCh)
 	for true {
 
 	}
 
-	//initialization for simulator
-	numFloors := 4
-	ID := os.Args[1]
-	elevio.Init("localhost:"+ID, numFloors)
+	// //initialization for simulator
+	// numFloors := 4
+	// ID := os.Args[1]
+	// elevio.Init("localhost:"+ID, numFloors)
 
-	transmitStateCh := make(chan ElevatorState)
-	receiveStateCh := make(chan ElevatorState)
-	activeElevatorsCh := make(chan map[string]bool)
+	// transmitStateCh := make(chan ElevatorState)
+	// receiveStateCh := make(chan ElevatorState)
+	// activeElevatorsCh := make(chan map[string]bool)
 
-	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
+	// go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 
-	
-	stateTableTransmitCh := make(chan [7][9])
-	go statetable.UpdateStateTableFromPacket(receiveStateCh)
-	go statetable.StateTransmit(transmitStateCh, ID, stateTableTransmitCh)
-	go statetable.UpdateActiveElevators(activeElevatorsCh)
-	
-	
-	
-	
-	
-	msg := ElevatorState{ID: ID}
+	// stateTableTransmitCh := make(chan [7][9])
+	// go statetable.UpdateStateTableFromPacket(receiveStateCh)
+	// go statetable.StateTransmit(transmitStateCh, ID, stateTableTransmitCh)
+	// go statetable.UpdateActiveElevators(activeElevatorsCh)
 
-	for {
-		transmitStateCh <- msg
-		select {
-		case y := <-receiveStateCh:
-			//fmt.Println("main : packet received")
-			//fmt.Println(y.ID)
-			y.ID = "1111"
-		case activeElevators := <-activeElevatorsCh:
-			for ID, isAlive := range activeElevators {
-				fmt.Printf(ID + ": ")
-				fmt.Println(isAlive)
-			}
-			fmt.Printf("\n")
-		default:
-			//do stuff
-		}
-	}
+	// msg := ElevatorState{ID: ID}
+
+	// for {
+	// 	transmitStateCh <- msg
+	// 	select {
+	// 	case y := <-receiveStateCh:
+	// 		//fmt.Println("main : packet received")
+	// 		//fmt.Println(y.ID)
+	// 		y.ID = "1111"
+	// 	case activeElevators := <-activeElevatorsCh:
+	// 		for ID, isAlive := range activeElevators {
+	// 			fmt.Printf(ID + ": ")
+	// 			fmt.Println(isAlive)
+	// 		}
+	// 		fmt.Printf("\n")
+	// 	default:
+	// 		//do stuff
+	// 	}
+	// }
 }

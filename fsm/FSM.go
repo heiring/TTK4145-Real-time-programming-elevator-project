@@ -26,7 +26,7 @@ func InitFSM(elev_nr int, transmitStateTableCh chan<- [7][9]int) {
 	go pollHardwareActions(elev_nr, transmitStateTableCh)
 }
 
-func pollHardwareActions(elev_nr int, transmitStateTableCh chan<- [7][9]int) {
+func pollHardwareActions(elev_nr int, stateTableTransmitCh chan<- [7][9]int) {
 	drvButtons := make(chan elevio.ButtonEvent)
 	drvFloors := make(chan int)
 	drvObstr := make(chan bool)
@@ -40,6 +40,7 @@ func pollHardwareActions(elev_nr int, transmitStateTableCh chan<- [7][9]int) {
 	go orderdistributor.PollOrders(newOrder)
 
 	var currentOrder int
+	fmt.Println("PRE FOR LOOP")
 
 	for {
 		select {
@@ -54,7 +55,9 @@ func pollHardwareActions(elev_nr int, transmitStateTableCh chan<- [7][9]int) {
 			fmt.Println("SW: floor - ", floor)
 			lastFloor := statetable.GetCurrentFloor(elev_nr)
 			curDir := statetable.GetElevDirection(elev_nr)
+			fmt.Println("PRE TRANSMIT")
 			stateTableTransmitCh <- statetable.Get()
+			fmt.Println("POST TRANSMIT")
 
 			if lastFloor != statetable.UnknownFloor {
 				elevio.SetFloorIndicator(lastFloor)

@@ -73,7 +73,18 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 	for {
 		select {
 		case activeElevators := <-activeElevatorsCh: //pakker kommer regelmessig
-
+			//update state table
+			for ID, isAlive := range activeElevators {
+				for index := 0; index < 3; index++ {
+					if ID == string(stateTable[0][1+index*3]) {
+						if isAlive {
+							UpdateStateTableIndex(0, (index * 3), 1, true)
+						} else {
+							UpdateStateTableIndex(0, (index * 3), 0, true)
+						}
+					}
+				}
+			}
 		default:
 			//do nothing
 		}
@@ -160,4 +171,8 @@ func GetCurrentFloor(elev_nr int) int {
 
 func getCurrentID() string {
 	return string(stateTable[0][elevNr*3+1])
+}
+
+func Get() [7][9]int {
+	return stateTable
 }
