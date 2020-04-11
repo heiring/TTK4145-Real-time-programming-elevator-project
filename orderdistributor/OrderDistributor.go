@@ -1,7 +1,6 @@
 package orderdistributor
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -26,13 +25,13 @@ func DistributeOrders(orders [4][3]int, lastFloor, direction int) {
 		// HallUp buttons
 		if curHallUpOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
 			prioritizedOrders = append(prioritizedOrders, orderDestination)
-			fmt.Println("NEW PRIO (HU): ", prioritizedOrders)
+			//fmt.Println("NEW PRIO (HU): ", prioritizedOrders)
 		}
 
 		// HallDown buttons
 		if curHallDownOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
 			prioritizedOrders = append(prioritizedOrders, orderDestination)
-			fmt.Println("NEW PRIO (HD): ", prioritizedOrders)
+			//fmt.Println("NEW PRIO (HD): ", prioritizedOrders)
 			// if len(prioritizedOrders) <= 0 {
 			// 	fmt.Println("0 len")
 			// 	prioritizedOrders = append(prioritizedOrders, curHallDownOrder)
@@ -72,7 +71,7 @@ func DistributeOrders(orders [4][3]int, lastFloor, direction int) {
 		if curCabOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
 			if len(prioritizedOrders) <= 0 {
 				prioritizedOrders = append(prioritizedOrders, orderDestination)
-				fmt.Println("NEW ORDER APPENDED (CAB): ", orderDestination)
+				//fmt.Println("NEW ORDER APPENDED (CAB): ", orderDestination)
 			} else {
 				for i, lastOrder := range prioritizedOrders {
 					if !tools.IntInSlice(orderDestination, prioritizedOrders) {
@@ -101,7 +100,7 @@ func DistributeOrders(orders [4][3]int, lastFloor, direction int) {
 					}
 				}
 			}
-			fmt.Println("NEW PRIO (CAB): ", prioritizedOrders)
+			//fmt.Println("NEW PRIO (CAB): ", prioritizedOrders)
 		}
 	}
 
@@ -114,7 +113,7 @@ func PollOrders(receiver chan<- int) {
 		time.Sleep(config.PollRate)
 		order := GetOrderFloor()
 		if (order != prevOrder && order != -1) || (order == -1 && init) {
-			fmt.Println("Sending order...")
+			//fmt.Println("Sending order...")
 			receiver <- order
 			if init {
 				init = false
@@ -125,10 +124,10 @@ func PollOrders(receiver chan<- int) {
 }
 
 func CompleteCurrentOrder() {
-	fmt.Println("REMOVED COMPLETED ORDER")
-	fmt.Println("OLD PRIO.: ", prioritizedOrders)
+	//fmt.Println("REMOVED COMPLETED ORDER")
+	//fmt.Println("OLD PRIO.: ", prioritizedOrders)
 	prioritizedOrders = prioritizedOrders[1:]
-	fmt.Println("NEW PRIO.: ", prioritizedOrders)
+	//fmt.Println("NEW PRIO.: ", prioritizedOrders)
 }
 
 func GetOrderFloor() int {

@@ -45,19 +45,19 @@ func pollHardwareActions(elev_nr int, stateTableTransmitCh chan<- [7][9]int) {
 	for {
 		select {
 		case butn := <-drvButtons:
-			fmt.Println("SW: button - ", butn)
+			//fmt.Println("SW: button - ", butn)
 			var row int = 3 + butn.Floor
 			var col int = int(butn.Button)
 			elevio.SetButtonLamp(butn.Button, butn.Floor, true)
 			statetable.UpdateStateTableIndex(row, col, 1, true)
 			stateTableTransmitCh <- statetable.Get()
 		case floor := <-drvFloors:
-			fmt.Println("SW: floor - ", floor)
+			//fmt.Println("SW: floor - ", floor)
 			lastFloor := statetable.GetCurrentFloor(elev_nr)
 			curDir := statetable.GetElevDirection(elev_nr)
-			fmt.Println("PRE TRANSMIT")
+			//fmt.Println("PRE TRANSMIT")
 			stateTableTransmitCh <- statetable.Get()
-			fmt.Println("POST TRANSMIT")
+			//fmt.Println("POST TRANSMIT")
 
 			if lastFloor != statetable.UnknownFloor {
 				elevio.SetFloorIndicator(lastFloor)
@@ -66,26 +66,26 @@ func pollHardwareActions(elev_nr int, stateTableTransmitCh chan<- [7][9]int) {
 			statetable.UpdateElevLastFLoor(floor)
 
 			if currentOrder == floor {
-				fmt.Println("REACHED ORDER FLOOR: ", currentOrder)
+				//fmt.Println("REACHED ORDER FLOOR: ", currentOrder)
 				moveInDir(elevio.MD_Stop)
 				completeCurOrder(elev_nr)
 				stateTableTransmitCh <- statetable.Get()
 				// curOrder := orderdistributor.GetCurrentOrder()
 				// fmt.Println("NEW ORDER: ", curOrder)
 			} else if currentOrder == -1 {
-				fmt.Println("NO NEW ORDERS, NOT MOVING")
+				//fmt.Println("NO NEW ORDERS, NOT MOVING")
 				moveInDir(elevio.MD_Stop)
 				stateTableTransmitCh <- statetable.Get()
 			} else if currentOrder > floor {
-				fmt.Println("MOVING UP")
+				//fmt.Println("MOVING UP")
 				moveInDir(elevio.MD_Up)
 				stateTableTransmitCh <- statetable.Get()
 			} else if currentOrder < floor {
-				fmt.Println("MOVING DOWN")
+				//fmt.Println("MOVING DOWN")
 				moveInDir(elevio.MD_Down)
 				stateTableTransmitCh <- statetable.Get()
 			} else if (floor == 0 && curDir == int(elevio.MD_Down)) || (floor == 3 && curDir == int(elevio.MD_Up)) {
-				fmt.Println("MOVING STOPPED (FLOOR)")
+				//fmt.Println("MOVING STOPPED (FLOOR)")
 				moveInDir(elevio.MD_Stop)
 				stateTableTransmitCh <- statetable.Get()
 			}
@@ -100,7 +100,7 @@ func pollHardwareActions(elev_nr int, stateTableTransmitCh chan<- [7][9]int) {
 			stateTableTransmitCh <- statetable.Get()
 
 		case order := <-newOrder:
-			fmt.Println("SW - order: ", order)
+			//fmt.Println("SW - order: ", order)
 			currentOrder = order
 			if currentOrder == -1 {
 				moveInDir(elevio.MD_Down)

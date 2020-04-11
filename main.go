@@ -39,43 +39,36 @@ func main() {
 	go statetable.UpdateStateTableFromPacket(receiveStateCh)
 	go statetable.TransmitState(stateTableTransmitCh, port, transmitStateCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
-	for true {
+
+	for {
 
 	}
+	/*
+		ticker := time.NewTicker(1000 * time.Millisecond)
+		stateTable := statetable.Get()
+		for {
+			select {
+			case <-ticker.C:
+				stateTable = statetable.Get()
+				for i := 0; i < 7; i++ {
+					fmt.Println(stateTable[i])
+				}
+				fmt.Printf("\n")
+			default:
+				//do nothing
+			}
 
-	// //initialization for simulator
-	// numFloors := 4
-	// ID := os.Args[1]
-	// elevio.Init("localhost:"+ID, numFloors)
-
-	// transmitStateCh := make(chan ElevatorState)
-	// receiveStateCh := make(chan ElevatorState)
-	// activeElevatorsCh := make(chan map[string]bool)
-
-	// go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
-
-	// stateTableTransmitCh := make(chan [7][9])
-	// go statetable.UpdateStateTableFromPacket(receiveStateCh)
-	// go statetable.StateTransmit(transmitStateCh, ID, stateTableTransmitCh)
-	// go statetable.UpdateActiveElevators(activeElevatorsCh)
-
-	// msg := ElevatorState{ID: ID}
-
-	// for {
-	// 	transmitStateCh <- msg
-	// 	select {
-	// 	case y := <-receiveStateCh:
-	// 		//fmt.Println("main : packet received")
-	// 		//fmt.Println(y.ID)
-	// 		y.ID = "1111"
-	// 	case activeElevators := <-activeElevatorsCh:
-	// 		for ID, isAlive := range activeElevators {
-	// 			fmt.Printf(ID + ": ")
-	// 			fmt.Println(isAlive)
-	// 		}
-	// 		fmt.Printf("\n")
-	// 	default:
-	// 		//do stuff
-	// 	}
-	// }
+		}
+	*/
+	/*
+		for {
+			select {
+			case receivedState := <-receiveStateCh:
+				for i := 0; i < 7; i++ {
+					fmt.Println(receivedState.StateTable[i])
+				}
+				fmt.Printf("\n")
+			}
+		}
+	*/
 }

@@ -44,9 +44,14 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
 		select {
 		case elevState := <-receiveStateCh:
 			for row, cells := range elevState.StateTable {
-				for _, col := range cells {
+				for col, _ := range cells {
 					if !(row <= 2 && col == (elevNr*3+1)) {
+						fmt.Printf("pre error, row: ")
+						fmt.Println(row)
+						fmt.Printf("col: ")
+						fmt.Println(col)
 						stateTable[row][col+elevNr*3] = cells[col]
+						fmt.Println("post error")
 					}
 				}
 			}
@@ -115,7 +120,7 @@ func runOrderDistribution() {
 }
 
 func UpdateElevLastFLoor(val int) {
-	fmt.Println("UpdateElevLastFLoor, val: ", val)
+	//fmt.Println("UpdateElevLastFLoor, val: ", val)
 	// stateTable[2][elevNr*3+1] = val
 	UpdateStateTableIndex(2, 1, val, false)
 }
