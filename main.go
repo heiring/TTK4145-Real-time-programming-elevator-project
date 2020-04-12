@@ -40,9 +40,6 @@ func main() {
 	go statetable.TransmitState(stateTableTransmitCh, port, transmitStateCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
 
-	for {
-
-	}
 	/*
 		ticker := time.NewTicker(1000 * time.Millisecond)
 		stateTable := statetable.Get()

@@ -47,6 +47,7 @@ func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, receiveStateCh 
 			lastUpdate[receivedPacket.ID] = time.Now()
 			receiveStateCh <- receivedPacket
 			lifeSignalIDCh <- receivedPacket.ID
+
 		case <-ticker.C:
 			for ID, t := range lastUpdate {
 				if time.Now().Sub(t) > timeout {
