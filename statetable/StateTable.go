@@ -44,14 +44,16 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
 		select {
 		case elevState := <-receiveStateCh:
 			for row, cells := range elevState.StateTable {
-				for col, _ := range cells {
-					if !(row <= 2 && col == (elevNr*3+1)) {
-						fmt.Printf("pre error, row: ")
-						fmt.Println(row)
-						fmt.Printf("col: ")
-						fmt.Println(col)
-						stateTable[row][col+elevNr*3] = cells[col]
-						fmt.Println("post error")
+				fmt.Println("CELLS = ", cells)
+				for col := range cells {
+					if !(row <= 2 && col >= (elevNr*3) && col <= (elevNr*3+2)) {
+						// fmt.Printf("pre error, row: ")
+						// fmt.Println(row)
+						// fmt.Printf("col: ")
+						// fmt.Println(col)
+						stateTable[row][col] = cells[col]
+						fmt.Println("ROW = ", row, "\tCOL = ", col)
+						// fmt.Println("post error")
 					}
 				}
 			}
@@ -140,8 +142,8 @@ func ResetElevRow(row int) {
 
 func ResetRow(row int) {
 	for col := 0; col < 9; col++ {
-		UpdateStateTableIndex(row, col, 0, false)
-		// stateTable[row][col] = 0
+		// UpdateStateTableIndex(row, col, 0, false)
+		stateTable[row][col] = 0
 	}
 }
 
