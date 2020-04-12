@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"strconv"
+	"time"
 
 	. "./config"
 	"./elevio"
@@ -40,23 +42,21 @@ func main() {
 	go statetable.TransmitState(stateTableTransmitCh, port, transmitStateCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
 
-	/*
-		ticker := time.NewTicker(1000 * time.Millisecond)
-		stateTable := statetable.Get()
-		for {
-			select {
-			case <-ticker.C:
-				stateTable = statetable.Get()
-				for i := 0; i < 7; i++ {
-					fmt.Println(stateTable[i])
-				}
-				fmt.Printf("\n")
-			default:
-				//do nothing
+	ticker := time.NewTicker(1000 * time.Millisecond)
+	stateTable := statetable.Get()
+	for {
+		select {
+		case <-ticker.C:
+			stateTable = statetable.Get()
+			for i := 0; i < 7; i++ {
+				fmt.Println(stateTable[i])
 			}
-
+			fmt.Printf("\n")
+		default:
+			//do nothing
 		}
-	*/
+	}
+
 	/*
 		for {
 			select {
