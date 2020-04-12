@@ -13,5 +13,5 @@ const (
 
 type ElevatorState struct {
 	ID         string
-	StateTable [7][9]int
+	StateTable [7][3]int
 }

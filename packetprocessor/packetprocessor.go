@@ -8,7 +8,7 @@ import (
 	"../network/bcast"
 )
 
-func transmitStateTable(stateTable [7][9]int, ID string, transmitStateCh chan<- ElevatorState) {
+func transmitStateTable(stateTable [7][3]int, ID string, transmitStateCh chan<- ElevatorState) {
 	statePacket := ElevatorState{ID: ID, StateTable: stateTable}
 	transmitStateCh <- statePacket
 }

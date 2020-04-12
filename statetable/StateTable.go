@@ -7,64 +7,73 @@ import (
 	"../orderdistributor"
 )
 
-var stateTable [7][9]int
-var elevNr int
+// var stateTables [7][3]int
+var StateTables = make(map[string][7][3]int)
+
+// var stateTable [7][9]int
+var localID string
 
 const UnknownFloor int = -1
 
-func InitStateTable(elevnr, port int) {
-	elevNr = elevnr
+func InitStateTable(port int) {
 	fmt.Println("InitStateTable")
-	for row, cells := range stateTable {
+	var tempStateTable [7][3]int
+	for row, cells := range tempStateTable {
 		for _, col := range cells {
-			// stateTable[row][col] = 0
-			UpdateStateTableIndex(row, col, 0, false)
+			tempStateTable[row][col] = 0
+			// UpdateStateTableIndex(row, col, 0, false)
 		}
 	}
 	// Unknown starting position
 	// stateTable[2][elevNr*3+1] = UnknownFloor
-	UpdateStateTableIndex(2, 1, UnknownFloor, false)
+	// UpdateStateTableIndex(2, 1, UnknownFloor, false)
+	tempStateTable[2][1] = UnknownFloor
 	// Set ID = port
-	UpdateStateTableIndex(0, 1, port, false)
+	// UpdateStateTableIndex(0, 1, port, false)
+	tempStateTable[0][1] = port
+	StateTables[string(port)] = tempStateTable
+	localID = string(port)
 }
 
-func UpdateEntireStateTable(elevState ElevatorState) {
-	for row, cells := range elevState.StateTable {
-		for _, col := range cells {
-			if !(row <= 2 && col == (elevNr*3+1)) {
-				UpdateStateTableIndex(row, col, cells[col], false)
-			}
-		}
-	}
-	runOrderDistribution()
-}
+// func UpdateEntireStateTable(elevState ElevatorState) {
+// 	for row, cells := range elevState.StateTable {
+// 		for _, col := range cells {
+// 			if !(row <= 2 && col == (elevNr*3+1)) {
+// 				UpdateStateTableIndex(row, col, cells[col], false)
+// 			}
+// 		}
+// 	}
+// 	runOrderDistribution()
+// }
 
 func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
 	for {
 		select {
 		case elevState := <-receiveStateCh:
-			for row, cells := range elevState.StateTable {
-				fmt.Println("CELLS = ", cells)
-				for col := range cells {
-					if !(row <= 2 && col >= (elevNr*3) && col <= (elevNr*3+2)) {
-						// fmt.Printf("pre error, row: ")
-						// fmt.Println(row)
-						// fmt.Printf("col: ")
-						// fmt.Println(col)
-						stateTable[row][col] = cells[col]
-						fmt.Println("ROW = ", row, "\tCOL = ", col)
-						// fmt.Println("post error")
-					}
-				}
-			}
+			ID := elevState.ID
+			StateTables[ID] = elevState.StateTable
+			runOrderDistribution()
+			// for row, cells := range elevState.StateTable {
+			// 	fmt.Println("CELLS = ", cells)
+			// 	for col := range cells {
+			// 		if !(row <= 2 && col >= (elevNr*3) && col <= (elevNr*3+2)) {
+			// 			// fmt.Printf("pre error, row: ")
+			// 			// fmt.Println(row)
+			// 			// fmt.Printf("col: ")
+			// 			// fmt.Println(col)
+			// 			stateTable[row][col] = cells[col]
+			// 			fmt.Println("ROW = ", row, "\tCOL = ", col)
+			// 			// fmt.Println("post error")
+			// 		}
+			// 	}
+			// }
 		default:
 			//do stuff
 		}
 	}
-	runOrderDistribution()
 }
 
-func TransmitState(stateTableTransmitCh <-chan [7][9]int, ID string, transmitStateCh chan<- ElevatorState) {
+func TransmitState(stateTableTransmitCh <-chan [7][3]int, ID string, transmitStateCh chan<- ElevatorState) {
 	for {
 		select {
 		case stateTable := <-stateTableTransmitCh:
@@ -82,15 +91,24 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 		case activeElevators := <-activeElevatorsCh: //pakker kommer regelmessig
 			//update state table
 			for ID, isAlive := range activeElevators {
-				for index := 0; index < 3; index++ {
-					if ID == string(stateTable[0][1+index*3]) {
+				for port := range StateTables {
+					if ID == port {
 						if isAlive {
-							UpdateStateTableIndex(0, (index * 3), 1, true)
+							UpdateStateTableIndex(0, 0, port, 1, true)
 						} else {
-							UpdateStateTableIndex(0, (index * 3), 0, true)
+							UpdateStateTableIndex(0, 0, port, 0, true)
 						}
 					}
 				}
+				// for index := 0; index < 3; index++ {
+				// 	if ID == string(stateTable[0][1+index*3]) {
+				// 		if isAlive {
+				// 			UpdateStateTableIndex(0, (index * 3), 1, true)
+				// 		} else {
+				// 			UpdateStateTableIndex(0, (index * 3), 0, true)
+				// 		}
+				// 	}
+				// }
 			}
 		default:
 			//do nothing
@@ -99,64 +117,63 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 	runOrderDistribution()
 }
 
-func UpdateStateTableIndex(row, col, val int, runDistribution bool) { // stateTableTransmitCh chan<- [7][9]int) {
-	stateTable[row][col+elevNr*3] = val
+func UpdateStateTableIndex(row, col int, port string, val int, runDistribution bool) { // stateTableTransmitCh chan<- [7][9]int) {
+	// stateTable[row][col+elevNr*3] = val
+	statetable := StateTables[port]
+	statetable[row][col] = val
+	StateTables[port] = statetable
 	if runDistribution {
 		runOrderDistribution()
-		//stateTableTransmitCh <- stateTable
-
 	}
 
 }
 
 func runOrderDistribution() {
-	var orders [4][3]int
-	for row := range orders {
-		for col := range orders[row] {
-			orders[row][col] = stateTable[3+row][col+3*elevNr]
-		}
-	}
-	position := stateTable[2][elevNr*3+1]
-	direction := stateTable[1][elevNr*3+1]
-	orderdistributor.DistributeOrders(orders, position, direction)
+	// var orders [4][3]int
+	// for row := range orders {
+	// 	for col := range orders[row] {
+	// 		orders[row][col] = StateTables[3+row][col]
+	// 	}
+	// }
+	// position := stateTable[2][elevNr*3+1]
+	// direction := stateTable[1][elevNr*3+1]
+	// orderdistributor.DistributeOrders(orders, position, direction)
+	orderdistributor.DistributeOrders(string(localID), StateTables)
 }
 
 func UpdateElevLastFLoor(val int) {
 	//fmt.Println("UpdateElevLastFLoor, val: ", val)
 	// stateTable[2][elevNr*3+1] = val
-	UpdateStateTableIndex(2, 1, val, false)
+	UpdateStateTableIndex(2, 1, localID, val, false)
 }
 
 // UpdateElevDirection comment
 func UpdateElevDirection(val int) {
 	// stateTable[1][elevNr*3+1] = val
-	UpdateStateTableIndex(1, 1, val, false)
+	UpdateStateTableIndex(1, 1, localID, val, false)
 }
 
 func ResetElevRow(row int) {
 	for col := 0; col < 3; col++ {
-		UpdateStateTableIndex(row, col, 0, false)
+		UpdateStateTableIndex(row, col, localID, 0, false)
 		// stateTable[row][col+elevNr*3] = 0
 	}
 }
 
 func ResetRow(row int) {
-	for col := 0; col < 9; col++ {
-		// UpdateStateTableIndex(row, col, 0, false)
-		stateTable[row][col] = 0
-	}
+	ResetElevRow(row)
 }
 
-func getPositionRow(elev_nr int) int {
+func getPositionRow(port string) int {
 	// var position [3]int
 	// for i := range position {
 	// 	position[i] = stateTable[2][i+3*elev_nr]
 	// }
-	position := stateTable[2][elev_nr*3+1]
+	position := StateTables[port][2][1]
 	return position
 }
 
-func GetElevDirection(elev_nr int) int {
+func GetElevDirection(port string) int {
 	// dir := stateTable[1][0+3*elev_nr]*(-1) + stateTable[1][1+3*elev_nr]*0 + stateTable[1][1+3*elev_nr]*1
 	// check := stateTable[1][0+3*elev_nr] + stateTable[1][1+3*elev_nr] + stateTable[1][1+3*elev_nr]
 
@@ -164,22 +181,34 @@ func GetElevDirection(elev_nr int) int {
 	// 	return dir
 	// }
 	// return 11 // Error!
-	direction := stateTable[1][elev_nr*3+1]
+	direction := StateTables[port][1][1]
 	return direction
 }
 
-func GetCurrentFloor(elev_nr int) int {
+func GetCurrentFloor() int {
 	// bin := tools.ArrayToString(getPositionRow(elev_nr))
 	// lastFloor, _ := strconv.ParseInt(bin, 2, 64)
 	// return int(lastFloor)
-	floor := stateTable[2][elev_nr*3+1]
+	floor := StateTables[localID][2][1]
+	return floor
+}
+
+func GetCurrentElevFloor(port string) int {
+	// bin := tools.ArrayToString(getPositionRow(elev_nr))
+	// lastFloor, _ := strconv.ParseInt(bin, 2, 64)
+	// return int(lastFloor)
+	floor := StateTables[port][2][1]
 	return floor
 }
 
 func getCurrentID() string {
-	return string(stateTable[0][elevNr*3+1])
+	return string(StateTables[localID][0][1])
 }
 
-func Get() [7][9]int {
-	return stateTable
+func GetLocalID() string {
+	return string(StateTables[localID][0][1])
+}
+
+func Get() [7][3]int {
+	return StateTables[localID]
 }

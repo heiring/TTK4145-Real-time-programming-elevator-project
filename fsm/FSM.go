@@ -21,12 +21,12 @@ const (
 	EM_STOP
 )
 
-func InitFSM(elev_nr int, transmitStateTableCh chan<- [7][9]int) {
+func InitFSM(transmitStateTableCh chan<- [7][3]int) {
 	moveInDir(elevio.MD_Down)
-	go pollHardwareActions(elev_nr, transmitStateTableCh)
+	go pollHardwareActions(transmitStateTableCh)
 }
 
-func pollHardwareActions(elev_nr int, stateTableTransmitCh chan<- [7][9]int) {
+func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 	drvButtons := make(chan elevio.ButtonEvent)
 	drvFloors := make(chan int)
 	drvObstr := make(chan bool)
@@ -40,6 +40,7 @@ func pollHardwareActions(elev_nr int, stateTableTransmitCh chan<- [7][9]int) {
 	go orderdistributor.PollOrders(newOrder)
 
 	var currentOrder int
+	localID := statetable.GetLocalID()
 	fmt.Println("PRE FOR LOOP")
 
 	for {
@@ -49,12 +50,12 @@ func pollHardwareActions(elev_nr int, stateTableTransmitCh chan<- [7][9]int) {
 			var row int = 3 + butn.Floor
 			var col int = int(butn.Button)
 			elevio.SetButtonLamp(butn.Button, butn.Floor, true)
-			statetable.UpdateStateTableIndex(row, col, 1, true)
+			statetable.UpdateStateTableIndex(row, col, localID, 1, true)
 			stateTableTransmitCh <- statetable.Get()
 		case floor := <-drvFloors:
 			//fmt.Println("SW: floor - ", floor)
-			lastFloor := statetable.GetCurrentFloor(elev_nr)
-			curDir := statetable.GetElevDirection(elev_nr)
+			lastFloor := statetable.GetCurrentFloor()
+			curDir := statetable.GetElevDirection(localID)
 			//fmt.Println("PRE TRANSMIT")
 			stateTableTransmitCh <- statetable.Get()
 			//fmt.Println("POST TRANSMIT")
@@ -68,7 +69,7 @@ func pollHardwareActions(elev_nr int, stateTableTransmitCh chan<- [7][9]int) {
 			if currentOrder == floor {
 				//fmt.Println("REACHED ORDER FLOOR: ", currentOrder)
 				moveInDir(elevio.MD_Stop)
-				completeCurOrder(elev_nr)
+				completeCurOrder()
 				stateTableTransmitCh <- statetable.Get()
 				// curOrder := orderdistributor.GetCurrentOrder()
 				// fmt.Println("NEW ORDER: ", curOrder)
@@ -106,11 +107,11 @@ func pollHardwareActions(elev_nr int, stateTableTransmitCh chan<- [7][9]int) {
 				moveInDir(elevio.MD_Down)
 				stateTableTransmitCh <- statetable.Get()
 			} else {
-				currentFloor := statetable.GetCurrentFloor(elev_nr)
-				currentDirection := statetable.GetElevDirection(elev_nr)
+				currentFloor := statetable.GetCurrentFloor()
+				currentDirection := statetable.GetElevDirection(localID)
 				if currentOrder == currentFloor {
 					moveInDir(elevio.MD_Stop)
-					completeCurOrder(elev_nr)
+					completeCurOrder()
 					stateTableTransmitCh <- statetable.Get()
 				} else if currentDirection == elevio.MD_Stop {
 					newDirection, _ := tools.DivCheck((currentOrder - currentFloor), int(math.Abs(float64(currentOrder-currentFloor))))
@@ -136,9 +137,9 @@ func moveInDir(dir elevio.MotorDirection) {
 
 }
 
-func completeCurOrder(elev_nr int) {
+func completeCurOrder() {
 	time.Sleep(3 * time.Second)
-	curFloor := statetable.GetCurrentFloor(elev_nr)
+	curFloor := statetable.GetCurrentFloor()
 	row := curFloor + 3
 	statetable.ResetRow(row)
 	orderdistributor.CompleteCurrentOrder()
