@@ -8,7 +8,7 @@ import (
 	"../network/bcast"
 )
 
-func transmitStateTable(stateTable [7][9]int, ID string, transmitStateCh chan<- ElevatorState) {
+func transmitStateTable(stateTable [7][3]int, ID string, transmitStateCh chan<- ElevatorState) {
 	statePacket := ElevatorState{ID: ID, StateTable: stateTable}
 	transmitStateCh <- statePacket
 }
@@ -41,9 +41,7 @@ func ListenElevatorState(elevatorStateRxCh <-chan ElevatorState, receiveStateCh 
 
 	for {
 		select {
-		case newPacket := <-elevatorStateRxCh:
-
-			receivedPacket = newPacket
+		case receivedPacket = <-elevatorStateRxCh:
 			lastUpdate[receivedPacket.ID] = time.Now()
 			receiveStateCh <- receivedPacket
 			lifeSignalIDCh <- receivedPacket.ID
@@ -75,11 +73,11 @@ func MonitorActiveElevators(lostIDCh <-chan string, lifeSignalIDCh <-chan string
 			if mapValue, ok := activeElevators[lifeSignalID]; ok {
 				if !mapValue {
 					activeElevators[lifeSignalID] = true
-					activeElevatorsCh <- activeElevators
+					//activeElevatorsCh <- activeElevators
 				}
 			} else {
 				activeElevators[lifeSignalID] = true
-				activeElevatorsCh <- activeElevators
+				//activeElevatorsCh <- activeElevators
 				emptyMap = false
 			}
 
@@ -87,7 +85,7 @@ func MonitorActiveElevators(lostIDCh <-chan string, lifeSignalIDCh <-chan string
 			if mapValue, ok := activeElevators[lostID]; ok {
 				if mapValue {
 					activeElevators[lostID] = false
-					activeElevatorsCh <- activeElevators
+					//activeElevatorsCh <- activeElevators
 				}
 			}
 		case <-ticker.C:
@@ -98,6 +96,7 @@ func MonitorActiveElevators(lostIDCh <-chan string, lifeSignalIDCh <-chan string
 		default:
 			//do stuff
 		}
+
 	}
 }
 func PacketInterchange(transmitStateCh <-chan ElevatorState, receiveStateCh chan<- ElevatorState, activeElevatorsCh chan<- map[string]bool, StateTransmissionInterval time.Duration,

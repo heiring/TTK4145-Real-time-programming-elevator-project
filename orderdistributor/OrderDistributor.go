@@ -6,101 +6,116 @@ import (
 
 	"../config"
 	"../elevio"
+
+	// "../statetable"
 	"../tools"
 )
 
 var prioritizedOrders = make([]int, 0)
 
-func DistributeOrders(orders [4][3]int, lastFloor, direction int) {
+func DistributeOrders(port string, stateTables map[string][7][3]int) {
 
-	for row := 0; row < 4; row++ {
-		curHallUpOrder := orders[row][elevio.BT_HallUp]
-		curHallDownOrder := orders[row][elevio.BT_HallDown]
-		curCabOrder := orders[row][elevio.BT_Cab]
-		orderDestination := row
-
-		// Hall buttons
-		// - To do
-
-		// HallUp buttons
-		if curHallUpOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
-			prioritizedOrders = append(prioritizedOrders, orderDestination)
-			//fmt.Println("NEW PRIO (HU): ", prioritizedOrders)
+	// for port, statetable := range statetable.StateTables {
+	// Must be implemented whith cost function
+	if true {
+		sTable := stateTables[port]
+		var orders [4][3]int
+		for row := range orders {
+			for col := range orders[row] {
+				orders[row][col] = sTable[3+row][col]
+			}
 		}
+		lastFloor := sTable[2][1]
+		direction := sTable[1][1]
+		for row := 0; row < 4; row++ {
+			curHallUpOrder := orders[row][elevio.BT_HallUp]
+			curHallDownOrder := orders[row][elevio.BT_HallDown]
+			curCabOrder := orders[row][elevio.BT_Cab]
+			orderDestination := row
 
-		// HallDown buttons
-		if curHallDownOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
-			prioritizedOrders = append(prioritizedOrders, orderDestination)
-			//fmt.Println("NEW PRIO (HD): ", prioritizedOrders)
-			// if len(prioritizedOrders) <= 0 {
-			// 	fmt.Println("0 len")
-			// 	prioritizedOrders = append(prioritizedOrders, curHallDownOrder)
-			// 	fmt.Println("NEW ORDER APPENDED (HD): ", curHallDownOrder)
-			// } else {
-			// 	for index, lastOrder := range prioritizedOrders {
-			// 		lastOrderDirection := (lastOrder - lastFloor) / int(math.Abs(float64(lastOrder-lastFloor)))
-			// 		curHallOrderDirection := (curHallDownOrder - lastFloor) / int(math.Abs(float64(curCabOrder-lastFloor)))
+			// Hall buttons
+			// - To do
 
-			// 		// if direction not down
-			// 		// Add before lastOrder if closer
-
-			// 		// if lastOrder not in direction but neworder is
-			// 		if (direction != elevio.MD_Stop) && (lastOrderDirection != direction) && (curCabOrderDirection == direction) {
-			// 			prioritizedOrders = append([]int{curCabOrder}, prioritizedOrders...)
-			// 			break
-			// 		}
-
-			// 		// if both orders in same dir and neworder closer than lastOrder
-			// 		if lastOrderDirection == curCabOrderDirection {
-			// 			newOrderDistance := int(math.Abs(float64(lastFloor - curCabOrder)))
-			// 			lastOrderDistance := int(math.Abs(float64(lastFloor - lastOrder)))
-			// 			if newOrderDistance < lastOrderDistance {
-			// 				prioritizedOrders = append([]int{curCabOrder}, prioritizedOrders...)
-			// 			}
-			// 		}
-
-			// 		// Give new order lowest priority
-			// 		if i == (len(prioritizedOrders) - 1) {
-			// 			prioritizedOrders = append(prioritizedOrders, curCabOrder)
-			// 		}
-			// 	}
-			// }
-		}
-
-		// Cab buttons
-		if curCabOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
-			if len(prioritizedOrders) <= 0 {
+			// HallUp buttons
+			if curHallUpOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
 				prioritizedOrders = append(prioritizedOrders, orderDestination)
-				//fmt.Println("NEW ORDER APPENDED (CAB): ", orderDestination)
-			} else {
-				for i, lastOrder := range prioritizedOrders {
-					if !tools.IntInSlice(orderDestination, prioritizedOrders) {
-						lastOrderDirection, _ := tools.DivCheck(lastOrder-lastFloor, int(math.Abs(float64(lastOrder-lastFloor))))
-						curCabOrderDirection, _ := tools.DivCheck(curCabOrder-lastFloor, int(math.Abs(float64(curCabOrder-lastFloor))))
+				//fmt.Println("NEW PRIO (HU): ", prioritizedOrders)
+			}
 
-						// if lastOrder not in direction but neworder is
-						if (direction != elevio.MD_Stop) && (lastOrderDirection != direction) && (curCabOrderDirection == direction) {
-							prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
-							break
-						}
+			// HallDown buttons
+			if curHallDownOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
+				prioritizedOrders = append(prioritizedOrders, orderDestination)
+				//fmt.Println("NEW PRIO (HD): ", prioritizedOrders)
+				// if len(prioritizedOrders) <= 0 {
+				// 	fmt.Println("0 len")
+				// 	prioritizedOrders = append(prioritizedOrders, curHallDownOrder)
+				// 	fmt.Println("NEW ORDER APPENDED (HD): ", curHallDownOrder)
+				// } else {
+				// 	for index, lastOrder := range prioritizedOrders {
+				// 		lastOrderDirection := (lastOrder - lastFloor) / int(math.Abs(float64(lastOrder-lastFloor)))
+				// 		curHallOrderDirection := (curHallDownOrder - lastFloor) / int(math.Abs(float64(curCabOrder-lastFloor)))
 
-						// if both orders in same dir and neworder closer than lastOrder
-						if lastOrderDirection == curCabOrderDirection {
-							newOrderDistance := int(math.Abs(float64(lastFloor - curCabOrder)))
-							lastOrderDistance := int(math.Abs(float64(lastFloor - lastOrder)))
-							if newOrderDistance < lastOrderDistance {
+				// 		// if direction not down
+				// 		// Add before lastOrder if closer
+
+				// 		// if lastOrder not in direction but neworder is
+				// 		if (direction != elevio.MD_Stop) && (lastOrderDirection != direction) && (curCabOrderDirection == direction) {
+				// 			prioritizedOrders = append([]int{curCabOrder}, prioritizedOrders...)
+				// 			break
+				// 		}
+
+				// 		// if both orders in same dir and neworder closer than lastOrder
+				// 		if lastOrderDirection == curCabOrderDirection {
+				// 			newOrderDistance := int(math.Abs(float64(lastFloor - curCabOrder)))
+				// 			lastOrderDistance := int(math.Abs(float64(lastFloor - lastOrder)))
+				// 			if newOrderDistance < lastOrderDistance {
+				// 				prioritizedOrders = append([]int{curCabOrder}, prioritizedOrders...)
+				// 			}
+				// 		}
+
+				// 		// Give new order lowest priority
+				// 		if i == (len(prioritizedOrders) - 1) {
+				// 			prioritizedOrders = append(prioritizedOrders, curCabOrder)
+				// 		}
+				// 	}
+				// }
+			}
+
+			// Cab buttons
+			if curCabOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
+				if len(prioritizedOrders) <= 0 {
+					prioritizedOrders = append(prioritizedOrders, orderDestination)
+					//fmt.Println("NEW ORDER APPENDED (CAB): ", orderDestination)
+				} else {
+					for i, lastOrder := range prioritizedOrders {
+						if !tools.IntInSlice(orderDestination, prioritizedOrders) {
+							lastOrderDirection, _ := tools.DivCheck(lastOrder-lastFloor, int(math.Abs(float64(lastOrder-lastFloor))))
+							curCabOrderDirection, _ := tools.DivCheck(curCabOrder-lastFloor, int(math.Abs(float64(curCabOrder-lastFloor))))
+
+							// if lastOrder not in direction but neworder is
+							if (direction != elevio.MD_Stop) && (lastOrderDirection != direction) && (curCabOrderDirection == direction) {
 								prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+								break
 							}
-						}
 
-						// Give new order lowest priority
-						if i == (len(prioritizedOrders) - 1) {
-							prioritizedOrders = append(prioritizedOrders, orderDestination)
+							// if both orders in same dir and neworder closer than lastOrder
+							if lastOrderDirection == curCabOrderDirection {
+								newOrderDistance := int(math.Abs(float64(lastFloor - curCabOrder)))
+								lastOrderDistance := int(math.Abs(float64(lastFloor - lastOrder)))
+								if newOrderDistance < lastOrderDistance {
+									prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+								}
+							}
+
+							// Give new order lowest priority
+							if i == (len(prioritizedOrders) - 1) {
+								prioritizedOrders = append(prioritizedOrders, orderDestination)
+							}
 						}
 					}
 				}
+				//fmt.Println("NEW PRIO (CAB): ", prioritizedOrders)
 			}
-			//fmt.Println("NEW PRIO (CAB): ", prioritizedOrders)
 		}
 	}
 
