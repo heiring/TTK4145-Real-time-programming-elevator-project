@@ -16,8 +16,7 @@ import (
 func main() {
 
 	var port string
-	// flag.IntVar(&elevNr, "elevNr", 1, "Specify the elevator nr")
-	flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
+	flag.StringVar(&port, "port", "32000", "Specify a port corresponding to an elevator")
 	flag.Parse()
 
 	numFloors := 4
@@ -51,11 +50,14 @@ func main() {
 			fmt.Print("localID: ")
 			fmt.Println(statetable.GetLocalID())
 			for i := 0; i < 7; i++ {
-				fmt.Print(stateTables["15000"][i])
-				fmt.Print("				")
-				fmt.Println(stateTables["16000"][i])
+				for ID := range stateTables {
+					fmt.Print(stateTables[ID][i])
+					fmt.Print("\t\t\t")
+					// fmt.Println(stateTables[ID][i])
+				}
+				fmt.Println("")
 			}
-			fmt.Printf("\n")
+
 		default:
 			//do nothing
 		}
