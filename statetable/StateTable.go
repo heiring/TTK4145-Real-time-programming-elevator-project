@@ -42,7 +42,7 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
 			if ID != localID {
 				StateTables[ID] = elevState.StateTable
 
-				// To do: Update lights
+				updateLightsFromPacket()
 				runOrderDistribution()
 			}
 		default:
@@ -50,11 +50,19 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
 		}
 	}
 }
-func UpdateLightsFromPacket() {
-	for row, cells := range StateTables {
-		for col := range cells {
-			//
-			elevio.SetButtonLamp(butn, curFloor, false)
+func updateLightsFromPacket() {
+	// allOrders does not include new external orders
+	allOrders, _, _ := GetSyncedOrders()
+	fmt.Println("allOrders:\n", allOrders)
+	for floor := range allOrders {
+		for butn := elevio.BT_HallUp; butn < elevio.BT_Cab; butn++ {
+			if allOrders[floor][butn] == 1 {
+				elevio.SetButtonLamp(butn, floor, true)
+				fmt.Println("ON - BTN LIGHT FROM PACKET")
+			} else {
+				elevio.SetButtonLamp(butn, floor, false)
+				// fmt.Println("OFF - BTN LIGHT FROM PACKET")
+			}
 		}
 	}
 }
@@ -110,7 +118,8 @@ func UpdateStateTableIndex(row, col int, port string, val int, runDistribution b
 }
 
 func runOrderDistribution() {
-	orderdistributor.DistributeOrders(string(localID), StateTables)
+	allOrders, allDirections, allLocations := GetSyncedOrders()
+	orderdistributor.DistributeOrders(string(localID), allOrders, allDirections, allLocations)
 }
 
 func UpdateElevLastFLoor(val int) {
@@ -136,6 +145,34 @@ func ResetRow(row int) {
 func getPositionRow(port string) int {
 	position := StateTables[port][2][1]
 	return position
+}
+
+func GetSyncedOrders() ([4][3]int, map[string]int, map[string]int) {
+	var allOrders [4][3]int
+	var allDirections = make(map[string]int)
+	var allLocations = make(map[string]int)
+	for ID, statetable := range StateTables {
+		isAlive := statetable[0][0]
+		if isAlive == 0 {
+			break
+		}
+
+		for row := 0; row < 4; row++ {
+			for col := 0; col < 2; col++ {
+				allOrders[row][col] += statetable[row+3][col]
+				if statetable[row+3][col] != 0 {
+					allOrders[row][col] = (allOrders[row][col] / allOrders[row][col])
+				}
+			}
+			if ID == localID {
+				allOrders[row][2] = statetable[row+3][2]
+			}
+		}
+		allDirections[ID] = statetable[1][1]
+		allLocations[ID] = statetable[1][2]
+	}
+
+	return allOrders, allDirections, allLocations
 }
 
 func GetElevDirection(port string) int {

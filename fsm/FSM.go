@@ -66,6 +66,7 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 				moveInDir(elevio.MD_Stop)
 				completeCurOrder()
 				stateTableTransmitCh <- statetable.Get()
+				time.Sleep(3 * time.Second)
 			} else if currentOrder == -1 {
 				moveInDir(elevio.MD_Stop)
 				stateTableTransmitCh <- statetable.Get()
@@ -100,6 +101,7 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 					moveInDir(elevio.MD_Stop)
 					completeCurOrder()
 					stateTableTransmitCh <- statetable.Get()
+					time.Sleep(3 * time.Second)
 				} else if currentDirection == elevio.MD_Stop {
 					newDirection, _ := tools.DivCheck((currentOrder - currentFloor), int(math.Abs(float64(currentOrder-currentFloor))))
 					moveInDir(elevio.MotorDirection(newDirection))
@@ -118,7 +120,6 @@ func moveInDir(dir elevio.MotorDirection) {
 }
 
 func completeCurOrder() {
-	time.Sleep(3 * time.Second)
 	curFloor := statetable.GetCurrentFloor()
 	row := curFloor + 3
 	statetable.ResetRow(row)
