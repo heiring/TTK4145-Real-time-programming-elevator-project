@@ -2,9 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"strconv"
-	"time"
 
 	. "./config"
 	"./elevio"
@@ -30,7 +28,7 @@ func main() {
 
 	intport, _ := strconv.Atoi(port)
 	statetable.InitStateTable(intport)
-	fmt.Println("STATETABLE:\n", statetable.StateTables[port])
+	//fmt.Println("STATETABLE:\n", statetable.StateTables[port])
 	// network2.stateTable[row][col+elevNr*3] = valInit(transmitPacketCh)
 	elevio.Init(ip, numFloors)
 
@@ -47,26 +45,23 @@ func main() {
 	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
 
-	ticker := time.NewTicker(1000 * time.Millisecond)
-	stateTables := statetable.GetStateTables()
+	// ticker := time.NewTicker(1000 * time.Millisecond)
+	// stateTables := statetable.GetStateTables()
 	for {
-		select {
-		case <-ticker.C:
-			stateTables = statetable.GetStateTables()
-			fmt.Print("localID: ")
-			fmt.Println(statetable.GetLocalID())
-			for i := 0; i < 7; i++ {
-				for ID := range stateTables {
-					fmt.Print(stateTables[ID][i])
-					fmt.Print("\t\t\t")
-					// fmt.Println(stateTables[ID][i])
-				}
-				fmt.Println("")
-			}
+		// select {
+		// case <-ticker.C:
+		// 	stateTables = statetable.GetStateTables()
+		// 	// fmt.Print("localID: ")
+		// 	fmt.Println(statetable.GetLocalID())
+		// 	for i := 0; i < 7; i++ {
+		// 		fmt.Print(stateTables["15000"][i])
+		// 		fmt.Print("			")
+		// 		fmt.Println(stateTables["16000"][i])
+		// 	}
 
-		default:
-			//do nothing
-		}
+		// default:
+		// 	//do nothing
+		// }
 	}
 
 }

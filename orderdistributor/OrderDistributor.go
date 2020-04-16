@@ -12,7 +12,7 @@ import (
 
 var prioritizedOrders = make([]int, 0)
 
-func DistributeOrders(localID string, allOrders [4][3]int, allDirections, allLocations map[string]int) {
+func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection, allLocations map[string]int) {
 	// Don't care which elev got the order
 	// Active orders should not be moved unless the elev looses connection,
 	// which should happen automatically, need to use the isAlive value
@@ -30,7 +30,7 @@ func DistributeOrders(localID string, allOrders [4][3]int, allDirections, allLoc
 	// ***********************************************************************************
 
 	curLocalFloor := allLocations[localID]
-	curLocalDirection := allDirections[localID]
+	localMovementDirection := allMovementDirection[localID]
 
 	for row := 0; row < 4; row++ {
 		curHallUpOrder := allOrders[row][elevio.BT_HallUp]
@@ -49,57 +49,59 @@ func DistributeOrders(localID string, allOrders [4][3]int, allDirections, allLoc
 		if (curHallUpOrder != 0 || curHallDownOrder != 0) && !tools.IntInSlice(orderDestination, prioritizedOrders) {
 			fmt.Println("HALL btn pressed")
 			takeOrder := false
-			for ID := range allDirections {
-				orderDir := allLocations[ID] - orderDestination
-				if localOrderDir == curLocalDirection && orderDir != allDirections[ID] {
-					// If local only elev in same dir
-					takeOrder = true
-				} else if localOrderDir == curLocalDirection && orderDir == allDirections[ID] {
-					// Else if local has shortest distance
-					if localDistance <= allDistances[ID] {
+			for ID := range allMovementDirection {
+				if ID != localID {
+					externalOrderDir := allLocations[ID] - orderDestination
+					if localOrderDir == localMovementDirection && externalOrderDir != allMovementDirection[ID] {
+						// If local only elev in same dir
 						takeOrder = true
-					}
-				} else if localOrderDir != curLocalDirection && orderDir == allDirections[ID] {
-					// If other elevs is in same dir && local is not
-					takeOrder = false
-				} else if localOrderDir != curLocalDirection && orderDir != allDirections[ID] {
-					// If no elevs in same dir
-					if curLocalDirection == elevio.MD_Stop && allDirections[ID] != elevio.MD_Stop {
-						takeOrder = true
-					} else if curLocalDirection == elevio.MD_Stop && allDirections[ID] == elevio.MD_Stop {
+					} else if localOrderDir == localMovementDirection && externalOrderDir == allMovementDirection[ID] {
 						// Else if local has shortest distance
 						if localDistance <= allDistances[ID] {
 							takeOrder = true
 						}
-					} else if curLocalDirection != elevio.MD_Stop && allDirections[ID] == elevio.MD_Stop {
-						// If other elevs in STOP
+					} else if localOrderDir != localMovementDirection && externalOrderDir == allMovementDirection[ID] {
+						// If other elevs is in same dir && local is not
 						takeOrder = false
-					} else if curLocalDirection != elevio.MD_Stop && allDirections[ID] != elevio.MD_Stop {
-						// If no elevs in STOP
-						takeOrder = true
+					} else if localOrderDir != localMovementDirection && externalOrderDir != allMovementDirection[ID] {
+						// If no elevs in same dir
+						if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
+							takeOrder = true
+						} else if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
+							// Else if local has shortest distance
+							if localDistance <= allDistances[ID] {
+								takeOrder = true
+							}
+						} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
+							// If other elevs in STOP
+							takeOrder = false
+						} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
+							// If no elevs in STOP
+							takeOrder = true
+						}
 					}
 				}
 			}
 
 			if takeOrder {
 				if curHallDownOrder != 0 {
-					addOrderToQueue(elevio.BT_HallDown, orderDestination, curLocalFloor, curLocalDirection)
+					addOrderToQueue(elevio.BT_HallDown, orderDestination, curLocalFloor, localMovementDirection)
 				}
 				if curHallUpOrder != 0 {
-					addOrderToQueue(elevio.BT_HallUp, orderDestination, curLocalFloor, curLocalDirection)
+					addOrderToQueue(elevio.BT_HallUp, orderDestination, curLocalFloor, localMovementDirection)
 				}
 			}
 		}
 
 		// Cab buttons
 		if curCabOrder != 0 && !tools.IntInSlice(orderDestination, prioritizedOrders) {
-			addOrderToQueue(elevio.BT_Cab, orderDestination, curLocalFloor, curLocalDirection)
+			addOrderToQueue(elevio.BT_Cab, orderDestination, curLocalFloor, localMovementDirection)
 		}
 	}
 
 }
 
-func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, curLocalDirection int) {
+func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, localMovementDirection int) {
 	// Bugs! Elev on the way up may stop for HallDown orders
 	//
 	if len(prioritizedOrders) <= 0 {
@@ -112,7 +114,7 @@ func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, 
 				curOrderDirection, _ := tools.DivCheck(orderDestination-curLocalFloor, int(math.Abs(float64(orderDestination-curLocalFloor))))
 
 				// if lastOrder not in direction but neworder is
-				if (curLocalDirection != elevio.MD_Stop) && (lastOrderDirection != curLocalDirection) && (curOrderDirection == curLocalDirection) {
+				if (localMovementDirection != elevio.MD_Stop) && (lastOrderDirection != localMovementDirection) && (curOrderDirection == localMovementDirection) {
 					if !(button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Up)) ||
 						!(button == elevio.BT_HallUp && curOrderDirection == elevio.MD_Down) {
 						prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
