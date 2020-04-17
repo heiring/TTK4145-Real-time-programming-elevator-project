@@ -10,9 +10,10 @@ import (
 	"../orderdistributor"
 )
 
-var StateTables *StateTablesSync
+var StateTables *StateTablesMutex
 
-//var StateTables = make(map[string][7][3]int)
+var activeLights *ActiveLightsMutex
+
 var localID string
 
 const UnknownFloor int = -1
@@ -36,11 +37,13 @@ func InitStateTable(port int) {
 
 	//StateTables[localID] = tempStateTable
 
-	StateTables = &StateTablesSync{
+	StateTables = &StateTablesMutex{
 		Internal: map[string][7][3]int{
 			localID: tempStateTable,
 		},
 	}
+
+	activeLights = &ActiveLightsMutex{Internal: map[[2]int]bool{}}
 
 }
 
@@ -51,7 +54,7 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
 			ID := elevState.ID
 			if ID != localID {
 				StateTables.Write(ID, elevState.StateTable)
-				updateLightsFromPacket()
+				updateHallLightsFromExternalOrders()
 				runOrderDistribution()
 			}
 		default:
@@ -60,22 +63,32 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
 	}
 }
 
-func updateLightsFromPacket() {
-	// allOrders does not include new external orders
+func updateHallLightsFromExternalOrders() {
 	allOrders, _, _ := GetSyncedOrders()
-	// fmt.Println("allOrders:\n", allOrders)
+	activeLightsUpdate := activeLights.ReadWholeMap()
 	for floor := range allOrders {
 		for butn := elevio.BT_HallUp; butn < elevio.BT_Cab; butn++ {
 			if allOrders[floor][butn] == 1 {
-				elevio.SetButtonLamp(butn, floor, true)
-				fmt.Println("ON - BTN LIGHT FROM PACKET")
+				if !activeLightsUpdate[[2]int{int(butn), floor}] {
+					elevio.SetButtonLamp(butn, floor, true)
+
+					activeLightsUpdate[[2]int{int(butn), floor}] = true
+
+					fmt.Println("ON - BTN LIGHT FROM PACKET")
+				}
 			} else {
-				elevio.SetButtonLamp(butn, floor, false)
-				// fmt.Println("OFF - BTN LIGHT FROM PACKET")
+				if activeLightsUpdate[[2]int{int(butn), floor}] {
+					elevio.SetButtonLamp(butn, floor, false)
+
+					activeLightsUpdate[[2]int{int(butn), floor}] = false
+
+					// fmt.Println("OFF - BTN LIGHT FROM PACKET")
+				}
 			}
 
 		}
 	}
+	activeLights.WriteWholeMap(activeLightsUpdate)
 }
 
 func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState) {
@@ -98,18 +111,24 @@ func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<-
 func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 	for {
 		select {
-		case activeElevators := <-activeElevatorsCh: //Packets arrive regularly
-			//update state table
-			stateTables := StateTables.ReadWholeMap()
+		case activeElevators := <-activeElevatorsCh:
 			for ID, isAlive := range activeElevators {
-				for mapID, _ := range stateTables {
-					if mapID == ID {
-						if isAlive {
-							UpdateStateTableIndex(0, 0, ID, 1, true)
-						} else {
-							UpdateStateTableIndex(0, 0, ID, 0, true)
-							fmt.Println("DANGER")
-						}
+				stateTableUpdate := ReadStateTable(ID)
+
+				if isAlive {
+					if stateTableUpdate[0][0] == 0 {
+						//UpdateStateTableIndex(0, 0, ID, 1, true)
+						stateTableUpdate[0][0] = 1
+						StateTables.Write(ID, stateTableUpdate)
+						runOrderDistribution()
+					}
+				} else {
+					if stateTableUpdate[0][0] == 1 {
+						//UpdateStateTableIndex(0, 0, ID, 0, true)
+						stateTableUpdate[0][0] = 0
+						StateTables.Write(ID, stateTableUpdate)
+						runOrderDistribution()
+						fmt.Println("DANGER")
 					}
 				}
 			}
@@ -117,7 +136,39 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 			//do stuff
 		}
 	}
-	runOrderDistribution()
+
+	/*
+		for {
+			select {
+			case activeElevators := <-activeElevatorsCh: //Packets arrive regularly
+				//update state table
+				//stateTablesUpdate := StateTables.ReadWholeMap()
+				for ID, isAlive := range activeElevators {
+					for mapID, _ := range stateTablesUpdate {
+						if mapID == ID {
+							if isAlive {
+								//UpdateStateTableIndex(0, 0, ID, 1, true)
+								stateTableTemp := stateTablesUpdate[ID]
+								stateTableTemp[0][0] = 1
+								stateTablesUpdate[ID] = stateTableTemp
+							} else {
+								//UpdateStateTableIndex(0, 0, ID, 0, true)
+								stateTableTemp := stateTablesUpdate[ID]
+								stateTableTemp[0][0] = 0
+								stateTablesUpdate[ID] = stateTableTemp
+								fmt.Println("DANGER")
+							}
+						}
+					}
+				}
+				StateTables.WriteWholeMap(stateTablesUpdate)
+				runOrderDistribution()
+			default:
+				//do stuff
+			}
+		}
+		runOrderDistribution()
+	*/
 }
 
 func UpdateStateTableIndex(row, col int, port string, val int, runDistribution bool) { // stateTableTransmitCh chan<- [7][9]int) {
@@ -140,7 +191,7 @@ func UpdateStateTableIndex(row, col int, port string, val int, runDistribution b
 
 func runOrderDistribution() {
 	allOrders, allDirections, allLocations := GetSyncedOrders()
-	orderdistributor.DistributeOrders(string(localID), allOrders, allDirections, allLocations)
+	orderdistributor.DistributeOrders(string(localID), allOrders, allDirections, allLocations) //string(localID)
 }
 
 func UpdateElevLastFLoor(val int) {
@@ -174,14 +225,14 @@ func getPositionRow(port string) int {
 	//return position
 }
 
-func GetSyncedOrders() ([4][3]int, map[string]int, map[string]int) {
+func GetSyncedOrders() ([4][3]int, map[string]int, map[string]int) { //omdøpe til noe som SyncOrdersDirectionsLocations (positions?)
 	var allOrders [4][3]int
 	var allDirections = make(map[string]int)
 	var allLocations = make(map[string]int)
 	stateTables := StateTables.ReadWholeMap()
 	for ID, statetable := range stateTables {
 		isAlive := statetable[0][0]
-		if isAlive == 0 {
+		if isAlive == 0 { //vi bør vel hente informasjon fra døde heiser også sånn at deres ordre fullføres
 			break
 		}
 
@@ -259,4 +310,16 @@ func ReadStateTable(ID string) [7][3]int {
 		fmt.Println("read error")
 	}
 	return stateTable
+}
+
+func UpdateActiveLights(butn elevio.ButtonType, floor int, active bool) {
+	activeLights.Write(int(butn), floor, active)
+}
+
+func checkActiveLights(butn elevio.ButtonType, floor int) bool {
+	isActive, ok := activeLights.Read(int(butn), floor)
+	if !ok {
+		fmt.Println("active lights: read error")
+	}
+	return isActive
 }
