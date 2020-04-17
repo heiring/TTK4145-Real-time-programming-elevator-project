@@ -32,6 +32,7 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 	drvObstr := make(chan bool)
 	drvStop := make(chan bool)
 	newOrder := make(chan int)
+	orderCompletedExternally := make(chan int)
 
 	go elevio.PollButtons(drvButtons)
 	go elevio.PollFloorSensor(drvFloors)
@@ -66,7 +67,6 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 			statetable.UpdateElevLastFLoor(floor)
 
 			if currentOrder == floor {
-				// When local elev completes an external order, external elev is not notified.
 				moveInDir(elevio.MD_Stop)
 				completeCurOrder()
 				stateTableTransmitCh <- statetable.Get()
@@ -112,6 +112,8 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 					stateTableTransmitCh <- statetable.Get()
 				}
 			}
+		case orderCompleted := <-orderCompletedExternally:
+			fmt.Println("Lol", orderCompleted)
 		}
 
 	}

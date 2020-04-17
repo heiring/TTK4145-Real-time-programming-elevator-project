@@ -39,16 +39,16 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection,
 		orderDestination := row
 
 		localOrderDir, _ := tools.DivCheck((orderDestination - curLocalFloor), (orderDestination - curLocalFloor))
-		localDistance := orderDestination - curLocalFloor
+		localDistance := int(math.Abs(float64(orderDestination - curLocalFloor)))
 		var allDistances = make(map[string]int)
 		for ID, location := range allLocations {
-			allDistances[ID] = orderDestination - location
+			allDistances[ID] = int(math.Abs(float64(orderDestination - location)))
 		}
 
 		// Hall buttons
-		// To do: directions with hall btns
 		if (curHallUpOrder != 0 || curHallDownOrder != 0) && !tools.IntInSlice(orderDestination, prioritizedOrders) {
 			fmt.Println("HALL btn pressed")
+			fmt.Println("allOrders: ", allOrders)
 			var butnTypeDir int // +1 = Up, -1 = Down
 			if curHallDownOrder != 0 {
 				butnTypeDir = elevio.MD_Down
@@ -59,12 +59,12 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection,
 			takeOrder := false
 			for ID := range allMovementDirection {
 				if ID != localID {
-					externalOrderDir := orderDestination - allLocations[ID]
-					if localOrderDir == localMovementDirection && externalOrderDir != allMovementDirection[ID] && localOrderDir == butnTypeDir {
+					externalOrderDir, _ := tools.DivCheck((orderDestination - allLocations[ID]), int(math.Abs(float64(orderDestination-allLocations[ID]))))
+					if localOrderDir == localMovementDirection && externalOrderDir != allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
 						// If local only elev in same dir
 						takeOrder = true
 						fmt.Println("true - 1")
-					} else if localOrderDir == localMovementDirection && externalOrderDir == allMovementDirection[ID] && localOrderDir == butnTypeDir {
+					} else if localOrderDir == localMovementDirection && externalOrderDir == allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
 						// Else if local has shortest distance
 						if localDistance <= allDistances[ID] {
 							takeOrder = true
@@ -108,13 +108,12 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection,
 						}
 					} else if externalOrderDir == butnTypeDir {
 						fmt.Println("Order error 2!")
-						// Received by elev correctly receiving another elevs order
-						// y tho
 					} else if localOrderDir == butnTypeDir {
 						fmt.Println("Order error 3!")
-						// Received by elev correctly receiving another elevs order
-						// y tho
 					}
+				} else { // Elev is ded
+					// make funeral
+
 				}
 			}
 

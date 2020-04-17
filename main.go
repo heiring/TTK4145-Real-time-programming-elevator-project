@@ -2,9 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"strconv"
-	"time"
 
 	. "./config"
 	"./elevio"
@@ -17,13 +15,20 @@ func main() {
 	// ************************************************************
 	// ***						Known bugs						***
 	// ************************************************************
-	// * Button light turns off only after the 3 sec wait, so sometimes it does not happen at all'
-	//
-	// * Must debug statetable.updateLightsFromPacket after hall btns are implemented
 	//
 	// * When elev is right next to current-order-floor, and a new order is received, the old order is not completed.
 	//
-	// * When local elev completes an external order, external elev is not notified.
+	// * FIXED External hall buttons seems to be bugged. When an external order is completed, the lights update perfectly,
+	//	 but the order is still active, so when a new local order is received and completed, elev returns to the old
+	// 	 hall order.
+	// - Potential fix: The extertnal elevator receives news of the order completion and updates its statetable,
+	//	 however the old statetable is still being transmitted on stateTableTransmitCh - since FSM only reacts to local
+	//	 statetable changes.
+	//
+	// * FIXED Any Hall btn pressed on local elev, with local elev already at the floor, no elevs take the order, the order is never completed
+	// 	 BUT! When the local elev starts moving, the external will move in and complete the order.
+	//
+	// * Ish 50 % of the time a button has to be pressed two times for the system to notice it
 
 	var port string
 	flag.StringVar(&port, "port", "32000", "Specify a port corresponding to an elevator")
@@ -47,27 +52,27 @@ func main() {
 
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 
-	go statetable.UpdateStateTableFromPacket(receiveStateCh)
+	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
 	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
 
-	ticker := time.NewTicker(1000 * time.Millisecond)
-	stateTables := statetable.GetStateTables()
+	// ticker := time.NewTicker(1000 * time.Millisecond)
+	// stateTables := statetable.GetStateTables()
 	for {
-		select {
-		case <-ticker.C:
-			stateTables = statetable.GetStateTables()
-			// fmt.Print("localID: ")
-			fmt.Println(statetable.GetLocalID())
-			for i := 0; i < 7; i++ {
-				fmt.Print(stateTables["15000"][i])
-				fmt.Print("			")
-				fmt.Println(stateTables["16000"][i])
-			}
+		// select {
+		// case <-ticker.C:
+		// 	stateTables = statetable.GetStateTables()
+		// 	// fmt.Print("localID: ")
+		// 	fmt.Println(statetable.GetLocalID())
+		// 	for i := 0; i < 7; i++ {
+		// 		fmt.Print(stateTables["32000"][i])
+		// 		fmt.Print("			")
+		// 		fmt.Println(stateTables["32001"][i])
+		// 	}
 
-		default:
-			// 	//do nothing
-		}
+		// default:
+		//do nothing
+		// }
 	}
 
 }

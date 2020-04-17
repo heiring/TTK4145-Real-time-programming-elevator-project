@@ -47,7 +47,7 @@ func InitStateTable(port int) {
 
 }
 
-func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
+func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableTransmitCh chan [7][3]int) {
 	for {
 		select {
 		case elevState := <-receiveStateCh:
@@ -56,11 +56,32 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState) {
 				StateTables.Write(ID, elevState.StateTable)
 				updateHallLightsFromExternalOrders()
 				runOrderDistribution()
+				updatedLocalState, ok := checkIfExternalOrderCompleted(elevState.StateTable)
+				if ok {
+					StateTables.Write(localID, updatedLocalState)
+					stateTableTransmitCh <- Get()
+				}
 			}
 		default:
 			//do stuff
 		}
 	}
+}
+
+func checkIfExternalOrderCompleted(elevState [7][3]int) ([7][3]int, bool) {
+	positionFloor := elevState[2][1]
+	elevDirection := elevState[1][1]
+	localStateTable := Get()
+	updateLocal := false
+	for col := 0; col < 2; col++ {
+		if (localStateTable[3+positionFloor][col] == 1) && !(col == 0 && elevDirection == int(elevio.MD_Down)) && !(col == 1 && elevDirection == int(elevio.MD_Up)) {
+			// Hall up/down with reversed elev dir will result in order deleted to soon
+			localStateTable[3+positionFloor][col] = 0
+			updateLocal = true
+			// We also need to notify the external elev that the order is completed now
+		}
+	}
+	return localStateTable, updateLocal
 }
 
 func updateHallLightsFromExternalOrders() {
