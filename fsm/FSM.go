@@ -49,6 +49,9 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 			var row int = 3 + butn.Floor
 			var col int = int(butn.Button)
 			elevio.SetButtonLamp(butn.Button, butn.Floor, true)
+
+			statetable.UpdateActiveLights(butn.Button, butn.Floor, true)
+
 			statetable.UpdateStateTableIndex(row, col, localID, 1, true)
 			stateTableTransmitCh <- statetable.Get()
 		case floor := <-drvFloors:

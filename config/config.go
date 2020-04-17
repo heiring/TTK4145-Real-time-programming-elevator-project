@@ -19,27 +19,64 @@ type ElevatorState struct {
 	StateTable [7][3]int
 }
 
-type StateTablesSync struct {
+type StateTablesMutex struct {
 	sync.RWMutex
 	Internal map[string][7][3]int
 }
 
-func (m *StateTablesSync) Read(key string) ([7][3]int, bool) {
+type ActiveLightsMutex struct {
+	sync.RWMutex
+	Internal map[[2]int]bool
+}
+
+func (m *StateTablesMutex) Read(key string) ([7][3]int, bool) {
 	m.RLock()
 	result, ok := m.Internal[key]
 	m.RUnlock()
 	return result, ok
 }
 
-func (m *StateTablesSync) Write(key string, value [7][3]int) {
+func (m *StateTablesMutex) Write(key string, value [7][3]int) {
 	m.Lock()
 	m.Internal[key] = value
 	m.Unlock()
 }
 
-func (m *StateTablesSync) ReadWholeMap() map[string][7][3]int {
+func (m *StateTablesMutex) ReadWholeMap() map[string][7][3]int {
 	m.RLock()
 	result := m.Internal
 	m.RUnlock()
 	return result
+}
+
+func (m *StateTablesMutex) WriteWholeMap(stateTables map[string][7][3]int) {
+	m.Lock()
+	m.Internal = stateTables
+	m.Unlock()
+}
+
+func (m *ActiveLightsMutex) Read(butn int, floor int) (bool, bool) {
+	m.RLock()
+	result, ok := m.Internal[[2]int{butn, floor}]
+	m.RUnlock()
+	return result, ok
+}
+
+func (m *ActiveLightsMutex) Write(butn int, floor int, value bool) {
+	m.Lock()
+	m.Internal[[2]int{butn, floor}] = value
+	m.Unlock()
+}
+
+func (m *ActiveLightsMutex) ReadWholeMap() map[[2]int]bool {
+	m.RLock()
+	result := m.Internal
+	m.RUnlock()
+	return result
+}
+
+func (m *ActiveLightsMutex) WriteWholeMap(activeLights map[[2]int]bool) {
+	m.Lock()
+	m.Internal = activeLights
+	m.Unlock()
 }
