@@ -197,9 +197,8 @@ func GetSyncedOrders() ([4][3]int, map[string]int, map[string]int) {
 			}
 		}
 		allDirections[ID] = statetable[1][1]
-		allLocations[ID] = statetable[1][2]
+		allLocations[ID] = statetable[2][1]
 	}
-
 	return allOrders, allDirections, allLocations
 }
 

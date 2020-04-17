@@ -63,6 +63,7 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 			statetable.UpdateElevLastFLoor(floor)
 
 			if currentOrder == floor {
+				// When local elev completes an external order, external elev is not notified.
 				moveInDir(elevio.MD_Stop)
 				completeCurOrder()
 				stateTableTransmitCh <- statetable.Get()

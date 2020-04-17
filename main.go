@@ -16,8 +16,12 @@ func main() {
 	// ***						Known bugs						***
 	// ************************************************************
 	// * Button light turns off only after the 3 sec wait, so sometimes it does not happen at all'
+	//
 	// * Must debug statetable.updateLightsFromPacket after hall btns are implemented
+	//
 	// * When elev is right next to current-order-floor, and a new order is received, the old order is not completed.
+	//
+	// * When local elev completes an external order, external elev is not notified.
 
 	var port string
 	flag.StringVar(&port, "port", "32000", "Specify a port corresponding to an elevator")
