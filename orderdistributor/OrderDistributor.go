@@ -175,3 +175,7 @@ func GetOrderFloor() int {
 	}
 	return -1
 }
+
+func GetOrderListLenght() int {
+	return len(prioritizedOrders)
+}

@@ -131,3 +131,66 @@ func completeCurOrder() {
 		elevio.SetButtonLamp(butn, curFloor, false)
 	}
 }
+
+func MonitorMotorStatus(newMotorDirCh <-chan elevio.MotorDirection) {
+	for {
+		select {
+		case newMotorDir := <- newMotorDirCh:
+			if newMotorDir != elevio.MD_Stop{
+				stateTable := statetable.ReadStateTable(statetable.localID)
+				currentFloor := stateTable[2][1]
+				time.Sleep(4000 * time.Millisecond)
+				stateTable = statetable.ReadStateTable(statetable.localID)
+				laterFloor := stateTable[2][1]
+				if laterFloor == currentFloor {
+					if stateTable[0][2] = 1{
+						stateTable[0][2] = 0
+						statetable.StateTables.Write(statetable.localID,stateTable)
+						statetable.RunOrderDistribution()
+					}
+				}else{
+					if stateTable[0][2] = 0{
+						stateTable[0][2] = 1
+						statetable.StateTables.Write(statetable.localID,stateTable)
+						statetable.RunOrderDistribution()
+					}
+				}
+			}			
+		default:
+			//do nothing
+		}
+	}
+}
+
+func MonitorMotorStatus2(orderFloorCh <-chan bool, orderCompletedCh <-chan bool ){
+	motorOperational := true
+	lastOrderCompleted := time.Now()
+	localID := statetable.GetLocalID()	
+	ticker := time.NewTicker(4000 * time.Millisecond)
+	for{
+		select{
+		case <- orderCompletedCh:
+			motorOperational = true
+			lastOrderCompleted = time.Now()
+		case <- ticker.C:
+			if time.Now().Sub(lastOrderCompleted) > 8000*time.Millisecond && orderdistributor.GetOrderListLength() != 0{ //bruke currentOrder?
+				motorOperational = false
+			}
+			stateTable := statetable.ReadStateTable(localID)
+			if motorOperational{
+				if stateTable[0][2] == 0{
+					stateTable[0][2] = 1
+					statetable.StateTables.Write(localID,stateTable)
+					statetable.runOrderDistribution()
+				}
+			}else{
+				if stateTable[0][2] == 1{
+					stateTable[0][2] = 0
+					statetable.StateTables.Write(localID,stateTable)
+					statetable.runOrderDistribution()
+				}
+			}
+		default:			
+		}	
+	}
+}

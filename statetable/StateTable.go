@@ -43,7 +43,7 @@ func InitStateTable(port int) {
 		},
 	}
 
-	activeLights = &ActiveLightsMutex{Internal: map[[2]int]bool{}}
+	activeLights = &ActiveLightsMutex{Internal: map[[2]int]bool{}} //dette passer kanskje ikke i InitStateTable() ?
 
 }
 
@@ -285,11 +285,10 @@ func GetCurrentElevFloor(port string) int {
 }
 
 func GetLocalID() string {
-	stateTable := ReadStateTable(localID)
+	//stateTable := ReadStateTable(localID)
+	//return strconv.Itoa(stateTable[0][1])
 
-	return strconv.Itoa(stateTable[0][1])
-
-	//return strconv.Itoa(StateTables[localID][0][1])
+	return localID
 }
 
 func Get() [7][3]int {
