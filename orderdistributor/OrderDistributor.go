@@ -39,47 +39,81 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection,
 		orderDestination := row
 
 		localOrderDir, _ := tools.DivCheck((orderDestination - curLocalFloor), (orderDestination - curLocalFloor))
-		localDistance := orderDestination - curLocalFloor
+		localDistance := int(math.Abs(float64(orderDestination - curLocalFloor)))
 		var allDistances = make(map[string]int)
 		for ID, location := range allLocations {
-			allDistances[ID] = orderDestination - location
+			allDistances[ID] = int(math.Abs(float64(orderDestination - location)))
 		}
 
 		// Hall buttons
 		if (curHallUpOrder != 0 || curHallDownOrder != 0) && !tools.IntInSlice(orderDestination, prioritizedOrders) {
 			fmt.Println("HALL btn pressed")
+			fmt.Println("allOrders: ", allOrders)
+			var butnTypeDir int // +1 = Up, -1 = Down
+			if curHallDownOrder != 0 {
+				butnTypeDir = elevio.MD_Down
+			} else {
+				butnTypeDir = int(elevio.MD_Up)
+			}
+
 			takeOrder := false
 			for ID := range allMovementDirection {
 				if ID != localID {
-					externalOrderDir := allLocations[ID] - orderDestination
-					if localOrderDir == localMovementDirection && externalOrderDir != allMovementDirection[ID] {
+					externalOrderDir, _ := tools.DivCheck((orderDestination - allLocations[ID]), int(math.Abs(float64(orderDestination-allLocations[ID]))))
+					if localOrderDir == localMovementDirection && externalOrderDir != allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
 						// If local only elev in same dir
 						takeOrder = true
-					} else if localOrderDir == localMovementDirection && externalOrderDir == allMovementDirection[ID] {
+						fmt.Println("true - 1")
+					} else if localOrderDir == localMovementDirection && externalOrderDir == allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
 						// Else if local has shortest distance
 						if localDistance <= allDistances[ID] {
 							takeOrder = true
+							fmt.Println("true - 2")
 						}
-					} else if localOrderDir != localMovementDirection && externalOrderDir == allMovementDirection[ID] {
+					} else if localOrderDir != localMovementDirection && externalOrderDir == allMovementDirection[ID] && externalOrderDir == butnTypeDir {
 						// If other elevs is in same dir && local is not
 						takeOrder = false
+						fmt.Println("false - 1")
+						break
 					} else if localOrderDir != localMovementDirection && externalOrderDir != allMovementDirection[ID] {
 						// If no elevs in same dir
 						if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
 							takeOrder = true
+							fmt.Println("true - 3")
+							fmt.Println("My location: ", curLocalFloor, "\tHis location: ", allLocations[ID])
+							fmt.Println("My dir: ", localMovementDirection, "\tHis dir: ", allMovementDirection[ID])
+							fmt.Println("externalOrderDir: ", externalOrderDir, "\tbutnTypeDir: ", butnTypeDir)
+							// CORRECT
 						} else if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
 							// Else if local has shortest distance
 							if localDistance <= allDistances[ID] {
 								takeOrder = true
+								fmt.Println("true - 4")
+							} else {
+								takeOrder = false
+								fmt.Println("false - 2")
+								break
 							}
 						} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
 							// If other elevs in STOP
 							takeOrder = false
+							fmt.Println("false - 3")
+							break
 						} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
 							// If no elevs in STOP
 							takeOrder = true
+							fmt.Println("true - 5")
+						} else {
+							fmt.Println("Order error 1!")
 						}
+					} else if externalOrderDir == butnTypeDir {
+						fmt.Println("Order error 2!")
+					} else if localOrderDir == butnTypeDir {
+						fmt.Println("Order error 3!")
 					}
+				} else { // Elev is ded
+					// make funeral
+
 				}
 			}
 
@@ -120,7 +154,6 @@ func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, 
 						prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
 						break
 					}
-
 				}
 
 				// if both orders in same dir and neworder closer than lastOrder
