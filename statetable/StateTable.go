@@ -232,8 +232,8 @@ func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) { //omdøp
 	stateTables := StateTables.ReadWholeMap()
 	for ID, statetable := range stateTables {
 		var status [2]int
-		// isAlive := statetable[0][0] * statetable[0][2]
-		isAlive := statetable[0][0]
+		isAlive := statetable[0][0] * statetable[0][2]
+		// isAlive := statetable[0][0]
 		status[1] = isAlive
 
 		for row := 0; row < 4; row++ {
