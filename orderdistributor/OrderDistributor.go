@@ -60,6 +60,7 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 
 			takeOrder := false
 			if len(allMovementDirection) > 1 {
+				fmt.Println("Multiple elevs!")
 				for ID := range allMovementDirection {
 					if ID != localID {
 						isAlive := elevStatuses[ID][1]
@@ -125,6 +126,7 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 				}
 			} else if len(allMovementDirection) == 1 {
 				takeOrder = true
+				fmt.Println("Only one elev! wth smh")
 			}
 
 			if takeOrder {
@@ -159,7 +161,8 @@ func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, 
 				if (localMovementDirection != elevio.MD_Stop) && (lastOrderDirection != localMovementDirection) && (curOrderDirection == localMovementDirection) {
 					if !(button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Up)) ||
 						!(button == elevio.BT_HallUp && curOrderDirection == elevio.MD_Down) {
-						prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+						// prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+						appendToIndex(i, orderDestination)
 						fmt.Println("Append 1")
 						break
 					}
@@ -171,11 +174,13 @@ func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, 
 					lastOrderDistance := int(math.Abs(float64(lastOrder - curLocalFloor)))
 					if newOrderDistance < lastOrderDistance {
 						if button == elevio.BT_HallUp && curOrderDirection == int(elevio.MD_Up) {
-							prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+							// prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+							appendToIndex(i, orderDestination)
 							fmt.Println("Append 2")
 							break
 						} else if button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Down) {
-							prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+							// prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+							appendToIndex(i, orderDestination)
 							fmt.Println("Append 3")
 							break
 						}
@@ -190,6 +195,12 @@ func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, 
 			}
 		}
 	}
+}
+
+func appendToIndex(index, floor int) {
+	prioritizedOrders = append(prioritizedOrders, 0) // temp
+	copy(prioritizedOrders[(index+1):], prioritizedOrders[index:])
+	prioritizedOrders[index] = floor
 }
 
 func PollOrders(receiver chan<- int) {
@@ -212,7 +223,9 @@ func PollOrders(receiver chan<- int) {
 func CompleteCurrentOrder() {
 	//fmt.Println("REMOVED COMPLETED ORDER")
 	//fmt.Println("OLD PRIO.: ", prioritizedOrders)
-	prioritizedOrders = prioritizedOrders[1:]
+	if len(prioritizedOrders) > 0 {
+		prioritizedOrders = prioritizedOrders[1:]
+	}
 	//fmt.Println("NEW PRIO.: ", prioritizedOrders)
 }
 

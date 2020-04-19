@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"strconv"
+	"time"
 
 	. "./config"
 	"./elevio"
@@ -43,7 +44,7 @@ func main() {
 	// * elev does not stop for new orders in same direction.
 
 	var port string
-	flag.StringVar(&port, "port", "32000", "Specify a port corresponding to an elevator")
+	flag.StringVar(&port, "port", "32003", "Specify a port corresponding to an elevator")
 	flag.Parse()
 
 	numFloors := 4
@@ -60,20 +61,25 @@ func main() {
 	activeElevatorsCh := make(chan map[string]bool)
 	elevio.Init(ip, numFloors)
 	statetable.InitStateTable(intport)
+	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
 	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
 	fsm.InitFSM(stateTableTransmitCh)
 
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
-	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
+
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
 
 	// ticker := time.NewTicker(1000 * time.Millisecond)
 	// stateTables := statetable.GetStateTables()
-	for {
+	// localID := statetable.GetLocalID()
+	for true {
+		time.Sleep(10 * time.Second)
 		// select {
 		// case <-ticker.C:
-		// 	stateTables = statetable.GetStateTables()
-		// 	// fmt.Print("localID: ")
+		// stateTables := statetable.GetStateTables()
+		// fmt.Println(stateTables[localID][0][0])
+		// time.Sleep(1 * time.Second)
+		// 	fmt.Print("localID: ")
 		// 	fmt.Println(statetable.GetLocalID())
 		// 	for i := 0; i < 7; i++ {
 		// 		fmt.Print(stateTables["32000"][i])
@@ -82,7 +88,7 @@ func main() {
 		// 	}
 
 		// default:
-		//do nothing
+		// 	// do nothing
 		// }
 	}
 

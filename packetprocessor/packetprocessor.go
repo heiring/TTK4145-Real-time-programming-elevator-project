@@ -8,11 +8,6 @@ import (
 	"../network/bcast"
 )
 
-func transmitStateTable(stateTable [7][3]int, ID string, transmitStateCh chan<- ElevatorState) {
-	statePacket := ElevatorState{ID: ID, StateTable: stateTable}
-	transmitStateCh <- statePacket
-}
-
 //BroadcastElevatorState broadcasts elevator state with a given interval.
 func BroadcastElevatorState(transmitStateCh <-chan ElevatorState, elevatorStateTxCh chan<- ElevatorState, transmitInterval time.Duration) {
 	transmissionTicker := time.NewTicker(transmitInterval)
@@ -114,5 +109,4 @@ func PacketInterchange(transmitStateCh <-chan ElevatorState, receiveStateCh chan
 	go bcast.Receiver(TransmissionPort, elevatorStateRxCh)
 
 	go MonitorActiveElevators(lostIDCh, lifeSignalIDCh, activeElevatorsCh, activeElevatorsTransmitInterval)
-
 }

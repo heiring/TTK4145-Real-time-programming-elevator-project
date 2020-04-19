@@ -63,6 +63,7 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 					fmt.Println("CheckedIFExternalOrderCompleted")
 				}
 			}
+
 		default:
 			//do stuff
 		}
@@ -225,10 +226,11 @@ func getPositionRow(port string) int {
 func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) { //omdøpe til noe som SyncOrdersDirectionsLocations (positions?)
 	var allOrders [4][3]int
 	var allDirections = make(map[string]int)
-	var elevStatuses = make(map[string][2]int)
+	var elevStatuses = make(map[string][2]int) // 1: Position, 2: NetworkAlive, 3: MotorAlive
 	stateTables := StateTables.ReadWholeMap()
 	for ID, statetable := range stateTables {
 		var status [2]int
+		// isAlive := statetable[0][0] * statetable[0][2]
 		isAlive := statetable[0][0]
 		status[1] = isAlive
 
