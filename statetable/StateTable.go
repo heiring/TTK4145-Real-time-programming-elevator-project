@@ -28,6 +28,8 @@ func InitStateTable(port int) {
 	}
 	// Set status to active
 	tempStateTable[0][0] = 1
+	// motor functional
+	tempStateTable[0][2] = 1
 	// Unknown starting position
 	tempStateTable[2][1] = UnknownFloor
 	// Set ID = port
@@ -55,7 +57,7 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 			if ID != localID {
 				StateTables.Write(ID, elevState.StateTable)
 				updateHallLightsFromExternalOrders()
-				runOrderDistribution()
+				RunOrderDistribution()
 				updatedLocalState, ok := checkIfExternalOrderCompleted(elevState.StateTable)
 				if ok {
 					StateTables.Write(localID, updatedLocalState)
@@ -151,14 +153,14 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 						//UpdateStateTableIndex(0, 0, ID, 1, true)
 						stateTableUpdate[0][0] = 1
 						StateTables.Write(ID, stateTableUpdate)
-						runOrderDistribution()
+						RunOrderDistribution()
 					}
 				} else {
 					if stateTableUpdate[0][0] == 1 {
 						//UpdateStateTableIndex(0, 0, ID, 0, true)
 						stateTableUpdate[0][0] = 0
 						StateTables.Write(ID, stateTableUpdate)
-						runOrderDistribution()
+						RunOrderDistribution()
 						fmt.Println("DANGER")
 					}
 				}
@@ -174,7 +176,7 @@ func UpdateStateTableIndex(row, col int, port string, val int, runDistribution b
 	stateTable[row][col] = val
 	StateTables.Write(port, stateTable)
 	if runDistribution {
-		runOrderDistribution()
+		RunOrderDistribution()
 	}
 
 	/*statetable, ok := StateTables.Read(localID)
@@ -182,12 +184,12 @@ func UpdateStateTableIndex(row, col int, port string, val int, runDistribution b
 		fmt.Println("read error")
 	}statetable
 		if runDistribution {
-			runOrderDistribution()
+			RunOrderDistribution()
 		}
 	*/
 }
 
-func runOrderDistribution() {
+func RunOrderDistribution() {
 	allOrders, allDirections, elevStatuses := GetSyncedOrders()
 	orderdistributor.DistributeOrders(string(localID), allOrders, allDirections, elevStatuses) //string(localID)
 }
