@@ -29,6 +29,8 @@ func main() {
 	// 	 BUT! When the local elev starts moving, the external will move in and complete the order.
 	//
 	// * Ish 50 % of the time a button has to be pressed two times for the system to notice it
+	// * Light door lamp!!
+	// * When an elevator dies (i.e. network cable unplugged) the elevator should function on its own
 
 	var port string
 	flag.StringVar(&port, "port", "32000", "Specify a port corresponding to an elevator")
