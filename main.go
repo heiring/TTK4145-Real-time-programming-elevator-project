@@ -33,6 +33,10 @@ func main() {
 	// * When an elevator dies (i.e. network cable unplugged) the elevator should function on its own
 	//
 	// * When an elev returns online, externally completed orders must be unlit
+	//
+	// * Elev0, and 1 at floor 3. Elev2 at floor 0. Hall_Down at floor 1 pushed with elev2. All elevs takes the order (true 4)
+	//   Happens only for more than 2 elevs.
+	// * Implement stop button!
 
 	var port string
 	flag.StringVar(&port, "port", "32000", "Specify a port corresponding to an elevator")
@@ -42,21 +46,21 @@ func main() {
 	ip := "localhost:" + port
 
 	intport, _ := strconv.Atoi(port)
-	statetable.InitStateTable(intport)
+
 	//fmt.Println("STATETABLE:\n", statetable.StateTables[port])
 	// network2.stateTable[row][col+elevNr*3] = valInit(transmitPacketCh)
-	elevio.Init(ip, numFloors)
 
 	transmitStateCh := make(chan ElevatorState)
 	stateTableTransmitCh := make(chan [7][3]int)
 	receiveStateCh := make(chan ElevatorState)
 	activeElevatorsCh := make(chan map[string]bool)
-
+	elevio.Init(ip, numFloors)
+	statetable.InitStateTable(intport)
+	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
 	fsm.InitFSM(stateTableTransmitCh)
 
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
-	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
 
 	// ticker := time.NewTicker(1000 * time.Millisecond)
