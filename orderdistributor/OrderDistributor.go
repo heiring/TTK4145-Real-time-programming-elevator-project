@@ -160,6 +160,7 @@ func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, 
 					if !(button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Up)) ||
 						!(button == elevio.BT_HallUp && curOrderDirection == elevio.MD_Down) {
 						prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+						fmt.Println("Append 1")
 						break
 					}
 				}
@@ -169,9 +170,13 @@ func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, 
 					newOrderDistance := int(math.Abs(float64(orderDestination - curLocalFloor)))
 					lastOrderDistance := int(math.Abs(float64(lastOrder - curLocalFloor)))
 					if newOrderDistance < lastOrderDistance {
-						if !(button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Up)) ||
-							!(button == elevio.BT_HallUp && curOrderDirection == elevio.MD_Down) {
+						if button == elevio.BT_HallUp && curOrderDirection == int(elevio.MD_Up) {
 							prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+							fmt.Println("Append 2")
+							break
+						} else if button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Down) {
+							prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+							fmt.Println("Append 3")
 							break
 						}
 					}
@@ -180,6 +185,7 @@ func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, 
 				// Give new order lowest priority
 				if i == (len(prioritizedOrders) - 1) {
 					prioritizedOrders = append(prioritizedOrders, orderDestination)
+					fmt.Println("Append 3")
 				}
 			}
 		}
