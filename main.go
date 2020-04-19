@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"strconv"
+	"time"
 
 	. "./config"
 	"./elevio"
@@ -67,23 +69,24 @@ func main() {
 	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
 
-	// ticker := time.NewTicker(1000 * time.Millisecond)
-	// stateTables := statetable.GetStateTables()
+	ticker := time.NewTicker(1000 * time.Millisecond)
+	stateTables := statetable.GetStateTables()
 	for {
-		// select {
-		// case <-ticker.C:
-		// 	stateTables = statetable.GetStateTables()
-		// 	// fmt.Print("localID: ")
-		// 	fmt.Println(statetable.GetLocalID())
-		// 	for i := 0; i < 7; i++ {
-		// 		fmt.Print(stateTables["32000"][i])
-		// 		fmt.Print("			")
-		// 		fmt.Println(stateTables["32001"][i])
-		// 	}
+		select {
+		case <-ticker.C:
+			stateTables = statetable.GetStateTables()
+			// fmt.Print("localID: ")
+			fmt.Println(statetable.GetLocalID())
+			for i := 0; i < 7; i++ {
+				fmt.Print(stateTables["32000"][i])
+				fmt.Print("			")
+				fmt.Println(stateTables["32001"][i])
+			}
 
-		// default:
-		//do nothing
-		// }
+			// default:
+			//do nothing
+		}
+
 	}
 
 }

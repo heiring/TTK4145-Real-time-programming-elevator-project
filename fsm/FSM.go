@@ -43,10 +43,13 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 	go elevio.PollStopButton(drvStop)
 	go orderdistributor.PollOrders(newOrder)
 
-	//!!
 	startWaitCh := make(chan bool)
 	newMotorDirCh := make(chan elevio.MotorDirection)
 	go executeNewMotorDirectionOrWait(startWaitCh, newMotorDirCh)
+	//!!
+	motorFunctionalCh := make(chan bool)
+	orderReceivedCh := make(chan bool)
+	go monitorMotorStatus(motorFunctionalCh, orderReceivedCh)
 	//!!
 
 	var currentOrder int
@@ -72,12 +75,13 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 
 			if currentOrder == floor {
 				moveInDir(elevio.MD_Stop, newMotorDirCh)
-				completeCurOrder(startWaitCh)
+				completeCurOrder(startWaitCh, motorFunctionalCh)
 				stateTableTransmitCh <- statetable.Get()
 				// time.Sleep(3 * time.Second)
 			} else if currentOrder == -1 {
 				moveInDir(elevio.MD_Stop, newMotorDirCh)
 				stateTableTransmitCh <- statetable.Get()
+				motorFunctionalCh <- true
 			} else if currentOrder > floor {
 				moveInDir(elevio.MD_Up, newMotorDirCh)
 				stateTableTransmitCh <- statetable.Get()
@@ -98,6 +102,7 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 			moveInDir(elevio.MD_Stop, newMotorDirCh)
 			stateTableTransmitCh <- statetable.Get()
 		case order := <-newOrder:
+			orderReceivedCh <- true
 			currentOrder = order
 			if currentOrder == -1 {
 				moveInDir(elevio.MD_Down, newMotorDirCh)
@@ -107,7 +112,7 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 				currentDirection := statetable.GetElevDirection(localID)
 				if currentOrder == currentFloor {
 					moveInDir(elevio.MD_Stop, newMotorDirCh)
-					completeCurOrder(startWaitCh)
+					completeCurOrder(startWaitCh, motorFunctionalCh)
 					stateTableTransmitCh <- statetable.Get()
 					// time.Sleep(3 * time.Second) //??????????????????????????????????????????
 				} else if currentDirection == elevio.MD_Stop {
@@ -130,7 +135,7 @@ func moveInDir(dir elevio.MotorDirection, newMotorDirCh chan<- elevio.MotorDirec
 	newMotorDirCh <- dir
 }
 
-func completeCurOrder(startWaitCh chan<- bool) {
+func completeCurOrder(startWaitCh chan<- bool, motorFunctionalCh chan<- bool) {
 	curFloor := statetable.GetCurrentFloor()
 	row := curFloor + 3
 	statetable.ResetRow(row)
@@ -138,8 +143,9 @@ func completeCurOrder(startWaitCh chan<- bool) {
 	for butn := elevio.BT_HallUp; butn <= elevio.BT_Cab; butn++ {
 		elevio.SetButtonLamp(butn, curFloor, false)
 	}
-	//!!!
 	startWaitCh <- true
+	//!!
+	motorFunctionalCh <- true
 
 }
 
@@ -214,35 +220,42 @@ func executeNewMotorDirectionOrWait(startWaitCh <-chan bool, newMotorDirCh <-cha
 // 	}
 // }
 
-// func MonitorMotorStatus2(orderFloorCh <-chan bool, orderCompletedCh <-chan bool ){
-// 	motorOperational := true
-// 	lastOrderCompleted := time.Now()
-// 	localID := statetable.GetLocalID()
-// 	ticker := time.NewTicker(4000 * time.Millisecond)
-// 	for{
-// 		select{
-// 		case <- orderCompletedCh:
-// 			motorOperational = true
-// 			lastOrderCompleted = time.Now()
-// 		case <- ticker.C:
-// 			if time.Now().Sub(lastOrderCompleted) > 8000*time.Millisecond && orderdistributor.GetOrderListLength() != 0{ //bruke currentOrder?
-// 				motorOperational = false
-// 			}
-// 			stateTable := statetable.ReadStateTable(localID)
-// 			if motorOperational{
-// 				if stateTable[0][2] == 0{
-// 					stateTable[0][2] = 1
-// 					statetable.StateTables.Write(localID,stateTable)
-// 					statetable.runOrderDistribution()
-// 				}
-// 			}else{
-// 				if stateTable[0][2] == 1{
-// 					stateTable[0][2] = 0
-// 					statetable.StateTables.Write(localID,stateTable)
-// 					statetable.runOrderDistribution()
-// 				}
-// 			}
-// 		default:
-// 		}
-// 	}
-// }
+func monitorMotorStatus(motorFunctionalCh <-chan bool, orderRecievedCh <-chan bool) {
+	motorFunctional := true
+	orderCompleted := true
+	lastOrderCompleted := time.Now()
+	lastOrderReceived := time.Now()
+
+	localID := statetable.GetLocalID()
+	ticker := time.NewTicker(1000 * time.Millisecond)
+	for {
+		select {
+		case <-motorFunctionalCh:
+			motorFunctional = true
+			orderCompleted = true
+			lastOrderCompleted = time.Now()
+		case <-orderRecievedCh: //kan en order komme før den forrige er fullført?
+			orderCompleted = false
+			lastOrderReceived = time.Now()
+		case <-ticker.C:
+			if time.Now().Sub(lastOrderCompleted) > 8000*time.Millisecond && time.Now().Sub(lastOrderReceived) > 8000*time.Millisecond && !orderCompleted {
+				motorFunctional = false
+			}
+			stateTable := statetable.ReadStateTable(localID)
+			if motorFunctional {
+				if stateTable[0][2] == 0 {
+					stateTable[0][2] = 1
+					statetable.StateTables.Write(localID, stateTable)
+					statetable.RunOrderDistribution()
+				}
+			} else {
+				if stateTable[0][2] == 1 {
+					stateTable[0][2] = 0
+					statetable.StateTables.Write(localID, stateTable)
+					statetable.RunOrderDistribution()
+				}
+			}
+		default:
+		}
+	}
+}
