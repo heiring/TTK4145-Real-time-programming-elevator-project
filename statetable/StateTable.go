@@ -157,39 +157,6 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 			//do stuff
 		}
 	}
-
-	/*
-		for {
-			select {
-			case activeElevators := <-activeElevatorsCh: //Packets arrive regularly
-				//update state table
-				//stateTablesUpdate := StateTables.ReadWholeMap()
-				for ID, isAlive := range activeElevators {
-					for mapID, _ := range stateTablesUpdate {
-						if mapID == ID {
-							if isAlive {
-								//UpdateStateTableIndex(0, 0, ID, 1, true)
-								stateTableTemp := stateTablesUpdate[ID]
-								stateTableTemp[0][0] = 1
-								stateTablesUpdate[ID] = stateTableTemp
-							} else {
-								//UpdateStateTableIndex(0, 0, ID, 0, true)
-								stateTableTemp := stateTablesUpdate[ID]
-								stateTableTemp[0][0] = 0
-								stateTablesUpdate[ID] = stateTableTemp
-								fmt.Println("DANGER")
-							}
-						}
-					}
-				}
-				StateTables.WriteWholeMap(stateTablesUpdate)
-				runOrderDistribution()
-			default:
-				//do stuff
-			}
-		}
-		runOrderDistribution()
-	*/
 }
 
 func UpdateStateTableIndex(row, col int, port string, val int, runDistribution bool) { // stateTableTransmitCh chan<- [7][9]int) {
@@ -211,8 +178,8 @@ func UpdateStateTableIndex(row, col int, port string, val int, runDistribution b
 }
 
 func runOrderDistribution() {
-	allOrders, allDirections, allLocations := GetSyncedOrders()
-	orderdistributor.DistributeOrders(string(localID), allOrders, allDirections, allLocations) //string(localID)
+	allOrders, allDirections, elevStatuses := GetSyncedOrders()
+	orderdistributor.DistributeOrders(string(localID), allOrders, allDirections, elevStatuses) //string(localID)
 }
 
 func UpdateElevLastFLoor(val int) {
@@ -246,16 +213,15 @@ func getPositionRow(port string) int {
 	//return position
 }
 
-func GetSyncedOrders() ([4][3]int, map[string]int, map[string]int) { //omdøpe til noe som SyncOrdersDirectionsLocations (positions?)
+func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) { //omdøpe til noe som SyncOrdersDirectionsLocations (positions?)
 	var allOrders [4][3]int
 	var allDirections = make(map[string]int)
-	var allLocations = make(map[string]int)
+	var elevStatuses = make(map[string][2]int)
 	stateTables := StateTables.ReadWholeMap()
 	for ID, statetable := range stateTables {
+		var status [2]int
 		isAlive := statetable[0][0]
-		if isAlive == 0 { //vi bør vel hente informasjon fra døde heiser også sånn at deres ordre fullføres
-			break
-		}
+		status[1] = isAlive
 
 		for row := 0; row < 4; row++ {
 			for col := 0; col < 2; col++ {
@@ -269,9 +235,10 @@ func GetSyncedOrders() ([4][3]int, map[string]int, map[string]int) { //omdøpe t
 			}
 		}
 		allDirections[ID] = statetable[1][1]
-		allLocations[ID] = statetable[2][1]
+		status[0] = statetable[2][1]
+		elevStatuses[ID] = status
 	}
-	return allOrders, allDirections, allLocations
+	return allOrders, allDirections, elevStatuses
 }
 
 func GetElevDirection(port string) int {

@@ -31,6 +31,8 @@ func main() {
 	// * Ish 50 % of the time a button has to be pressed two times for the system to notice it
 	// * Light door lamp!!
 	// * When an elevator dies (i.e. network cable unplugged) the elevator should function on its own
+	//
+	// * When an elev returns online, externally completed orders must be unlit
 
 	var port string
 	flag.StringVar(&port, "port", "32000", "Specify a port corresponding to an elevator")
@@ -53,7 +55,6 @@ func main() {
 	fsm.InitFSM(stateTableTransmitCh)
 
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
-
 	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
 	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
