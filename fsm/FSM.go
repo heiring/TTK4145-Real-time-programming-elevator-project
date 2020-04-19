@@ -127,9 +127,11 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 
 func moveInDir(dir elevio.MotorDirection, newMotorDirCh chan<- elevio.MotorDirection) {
 	//elevio.SetMotorDirection(dir)
-	//statetable.UpdateElevDirection(int(dir))
-
+	fmt.Println(time.Now())
+	statetable.UpdateElevDirection(int(dir))
+	fmt.Println(time.Now())
 	newMotorDirCh <- dir
+	fmt.Println(time.Now())
 
 }
 
@@ -168,7 +170,6 @@ func executeNewMotorDirectionOrWait(startWaitCh <-chan bool, newMotorDirCh <-cha
 				if newDir {
 					elevio.SetDoorOpenLamp(false)
 					elevio.SetMotorDirection(motorDir)
-					fmt.Println(int(motorDir))
 					statetable.UpdateElevDirection(int(motorDir))
 					newDir = false
 				}
