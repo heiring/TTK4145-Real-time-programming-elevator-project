@@ -24,8 +24,8 @@ const (
 func InitFSM(transmitStateTableCh chan<- [7][3]int) {
 	// moveInDir(elevio.MD_Down)
 	//!!
-	// elevio.SetMotorDirection(elevio.MD_Down)
-	// statetable.UpdateElevDirection(int(elevio.MD_Down))
+	//elevio.SetMotorDirection(elevio.MD_Down)
+	//statetable.UpdateElevDirection(int(elevio.MD_Down))
 	//!!
 	go pollHardwareActions(transmitStateTableCh)
 }
@@ -54,7 +54,6 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 	for {
 		select {
 		case butn := <-drvButtons:
-			fmt.Print("button press detected")
 			var row int = 3 + butn.Floor
 			var col int = int(butn.Button)
 			elevio.SetButtonLamp(butn.Button, butn.Floor, true)
@@ -62,7 +61,6 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 			statetable.UpdateStateTableIndex(row, col, localID, 1, true)
 			stateTableTransmitCh <- statetable.Get()
 		case floor := <-drvFloors:
-			fmt.Println("floor sensor triggered")
 			lastFloor := statetable.GetCurrentFloor()
 			curDir := statetable.GetElevDirection(localID)
 			stateTableTransmitCh <- statetable.Get()
@@ -128,10 +126,8 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 func moveInDir(dir elevio.MotorDirection, newMotorDirCh chan<- elevio.MotorDirection) {
 	// elevio.SetMotorDirection(dir)
 	statetable.UpdateElevDirection(int(dir))
-	// fmt.Println("newDirPending")
-	newMotorDirCh <- dir
-	// fmt.Println("newDirDelivered")
 
+	newMotorDirCh <- dir
 }
 
 func completeCurOrder(startWaitCh chan<- bool) {
@@ -153,11 +149,13 @@ func executeNewMotorDirectionOrWait(startWaitCh <-chan bool, newMotorDirCh <-cha
 	startedWaiting := time.Now()
 	initCompleted := false
 	newDir := true
+	doorOpenLightLit := false
 	for {
 		select {
 		case <-startWaitCh:
 			startedWaiting = time.Now()
 			elevio.SetDoorOpenLamp(true)
+			doorOpenLightLit = true
 		case newMotorDir := <-newMotorDirCh: //kan flere enn en direction vente i køen??
 			if newMotorDir != motorDir {
 				motorDir = newMotorDir
@@ -166,11 +164,12 @@ func executeNewMotorDirectionOrWait(startWaitCh <-chan bool, newMotorDirCh <-cha
 			}
 		default:
 			if time.Now().Sub(startedWaiting) > 3*time.Second {
-				if newDir {
-					fmt.Println("New MoToRDir")
+				if doorOpenLightLit {
 					elevio.SetDoorOpenLamp(false)
+					doorOpenLightLit = false
+				}
+				if newDir {
 					elevio.SetMotorDirection(motorDir)
-					fmt.Println(int(motorDir))
 					statetable.UpdateElevDirection(int(motorDir))
 					newDir = false
 				}

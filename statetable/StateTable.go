@@ -288,9 +288,8 @@ func GetLocalID() string {
 }
 
 func Get() [7][3]int {
-	fmt.Println("3")
 	stateTable := ReadStateTable(localID)
-	fmt.Println("4")
+
 	return stateTable
 
 	//return StateTables[localID]
