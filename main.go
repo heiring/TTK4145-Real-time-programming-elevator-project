@@ -37,6 +37,10 @@ func main() {
 	// * Elev0, and 1 at floor 3. Elev2 at floor 0. Hall_Down at floor 1 pushed with elev2. All elevs takes the order (true 4)
 	//   Happens only for more than 2 elevs.
 	// * Implement stop button!
+	//
+	// * If new cab order is received when elev is at floor, it begins to move to new order without waiting
+	//
+	// * elev does not stop for new orders in same direction.
 
 	var port string
 	flag.StringVar(&port, "port", "32000", "Specify a port corresponding to an elevator")

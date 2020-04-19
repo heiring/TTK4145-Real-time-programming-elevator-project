@@ -99,7 +99,6 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 			stateTableTransmitCh <- statetable.Get()
 		case order := <-newOrder:
 			currentOrder = order
-			fmt.Println("case new order")
 			if currentOrder == -1 {
 				moveInDir(elevio.MD_Down, newMotorDirCh)
 				stateTableTransmitCh <- statetable.Get()
@@ -125,7 +124,7 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 }
 
 func moveInDir(dir elevio.MotorDirection, newMotorDirCh chan<- elevio.MotorDirection) {
-	//elevio.SetMotorDirection(dir)
+	// elevio.SetMotorDirection(dir)
 	statetable.UpdateElevDirection(int(dir))
 
 	newMotorDirCh <- dir
