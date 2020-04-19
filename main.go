@@ -31,6 +31,9 @@ func main() {
 	// * Ish 50 % of the time a button has to be pressed two times for the system to notice it
 	//
 	// * When an elev returns online, externally completed orders must be unlit
+	//
+	// * Elev0, and 1 at floor 3. Elev2 at floor 0. Hall_Down at floor 1 pushed with elev2. All elevs takes the order (true 4)
+	//   Happens only for more than 2 elevs.
 
 	var port string
 	flag.StringVar(&port, "port", "32000", "Specify a port corresponding to an elevator")
@@ -40,10 +43,11 @@ func main() {
 	ip := "localhost:" + port
 
 	intport, _ := strconv.Atoi(port)
-	statetable.InitStateTable(intport)
+
 	//fmt.Println("STATETABLE:\n", statetable.StateTables[port])
 	// network2.stateTable[row][col+elevNr*3] = valInit(transmitPacketCh)
 	elevio.Init(ip, numFloors)
+	statetable.InitStateTable(intport)
 
 	transmitStateCh := make(chan ElevatorState)
 	stateTableTransmitCh := make(chan [7][3]int)

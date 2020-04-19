@@ -44,6 +44,7 @@ func InitStateTable(port int) {
 	}
 
 	activeLights = &ActiveLightsMutex{Internal: map[[2]int]bool{}}
+	toggleOffAllBtnLights()
 
 }
 
@@ -60,6 +61,7 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 				if ok {
 					StateTables.Write(localID, updatedLocalState)
 					stateTableTransmitCh <- Get()
+					fmt.Println("CheckedIFExternalOrderCompleted")
 				}
 			}
 		default:
@@ -110,6 +112,14 @@ func updateHallLightsFromExternalOrders() {
 		}
 	}
 	activeLights.WriteWholeMap(activeLightsUpdate)
+}
+
+func toggleOffAllBtnLights() {
+	for floor := 0; floor < 4; floor++ {
+		for butn := elevio.BT_HallUp; butn <= elevio.BT_Cab; butn++ {
+			elevio.SetButtonLamp(butn, floor, false)
+		}
+	}
 }
 
 func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState) {
