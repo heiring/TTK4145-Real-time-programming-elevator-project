@@ -282,15 +282,16 @@ func GetCurrentElevFloor(port string) int {
 }
 
 func GetLocalID() string {
-	stateTable := ReadStateTable(localID)
+	//stateTable := ReadStateTable(localID)
+	//return strconv.Itoa(stateTable[0][1])
 
-	return strconv.Itoa(stateTable[0][1])
-
-	//return strconv.Itoa(StateTables[localID][0][1])
+	return localID
 }
 
 func Get() [7][3]int {
+	fmt.Println("3")
 	stateTable := ReadStateTable(localID)
+	fmt.Println("4")
 	return stateTable
 
 	//return StateTables[localID]

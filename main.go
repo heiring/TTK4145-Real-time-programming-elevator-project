@@ -29,6 +29,8 @@ func main() {
 	// 	 BUT! When the local elev starts moving, the external will move in and complete the order.
 	//
 	// * Ish 50 % of the time a button has to be pressed two times for the system to notice it
+	// * Light door lamp!!
+	// * When an elevator dies (i.e. network cable unplugged) the elevator should function on its own
 	//
 	// * When an elev returns online, externally completed orders must be unlit
 	//
@@ -46,19 +48,18 @@ func main() {
 
 	//fmt.Println("STATETABLE:\n", statetable.StateTables[port])
 	// network2.stateTable[row][col+elevNr*3] = valInit(transmitPacketCh)
-	elevio.Init(ip, numFloors)
-	statetable.InitStateTable(intport)
 
 	transmitStateCh := make(chan ElevatorState)
 	stateTableTransmitCh := make(chan [7][3]int)
 	receiveStateCh := make(chan ElevatorState)
 	activeElevatorsCh := make(chan map[string]bool)
-
+	elevio.Init(ip, numFloors)
+	statetable.InitStateTable(intport)
+	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
 	fsm.InitFSM(stateTableTransmitCh)
 
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
-	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
 
 	// ticker := time.NewTicker(1000 * time.Millisecond)

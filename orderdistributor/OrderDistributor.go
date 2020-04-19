@@ -1,6 +1,7 @@
 package orderdistributor
 
 import (
+	//"fmt"
 	"fmt"
 	"math"
 	"time"
@@ -48,8 +49,8 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 
 		// Hall buttons
 		if (curHallUpOrder != 0 || curHallDownOrder != 0) && !tools.IntInSlice(orderDestination, prioritizedOrders) {
-			fmt.Println("HALL btn pressed")
-			fmt.Println("allOrders: ", allOrders)
+			//fmt.Println("HALL btn pressed")
+			//fmt.Println("allOrders: ", allOrders)
 			var butnTypeDir int // +1 = Up, -1 = Down
 			if curHallDownOrder != 0 {
 				butnTypeDir = elevio.MD_Down
@@ -212,4 +213,8 @@ func GetOrderFloor() int {
 		return prioritizedOrders[0]
 	}
 	return -1
+}
+
+func GetOrderListLenght() int {
+	return len(prioritizedOrders)
 }
