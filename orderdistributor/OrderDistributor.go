@@ -59,68 +59,72 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 			}
 
 			takeOrder := false
-			for ID := range allMovementDirection {
-				if ID != localID {
-					isAlive := elevStatuses[ID][1]
-					if isAlive == 1 {
-						externalOrderDir, _ := tools.DivCheck((orderDestination - elevStatuses[ID][0]), int(math.Abs(float64(orderDestination-elevStatuses[ID][0]))))
-						if localOrderDir == localMovementDirection && externalOrderDir != allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
-							// If local only elev in same dir
-							takeOrder = true
-							fmt.Println("true - 1")
-						} else if localOrderDir == localMovementDirection && externalOrderDir == allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
-							// Else if local has shortest distance
-							if localDistance <= allDistances[ID] {
+			if len(allMovementDirection) > 1 {
+				for ID := range allMovementDirection {
+					if ID != localID {
+						isAlive := elevStatuses[ID][1]
+						if isAlive == 1 {
+							externalOrderDir, _ := tools.DivCheck((orderDestination - elevStatuses[ID][0]), int(math.Abs(float64(orderDestination-elevStatuses[ID][0]))))
+							if localOrderDir == localMovementDirection && externalOrderDir != allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
+								// If local only elev in same dir
 								takeOrder = true
-								fmt.Println("true - 2")
-							}
-						} else if localOrderDir != localMovementDirection && externalOrderDir == allMovementDirection[ID] && externalOrderDir == butnTypeDir {
-							// If other elevs is in same dir && local is not
-							takeOrder = false
-							fmt.Println("false - 1")
-							break
-						} else if localOrderDir != localMovementDirection && externalOrderDir != allMovementDirection[ID] {
-							// If no elevs in same dir
-							if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
-								takeOrder = true
-								fmt.Println("true - 3")
-								fmt.Println("My location: ", curLocalFloor, "\tHis location: ", elevStatuses[ID][0])
-								fmt.Println("My dir: ", localMovementDirection, "\tHis dir: ", allMovementDirection[ID])
-								fmt.Println("externalOrderDir: ", externalOrderDir, "\tbutnTypeDir: ", butnTypeDir)
-								// CORRECT
-							} else if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
+								fmt.Println("true - 1")
+							} else if localOrderDir == localMovementDirection && externalOrderDir == allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
 								// Else if local has shortest distance
 								if localDistance <= allDistances[ID] {
 									takeOrder = true
-									fmt.Println("true - 4")
-								} else {
-									takeOrder = false
-									fmt.Println("false - 2")
-									break
+									fmt.Println("true - 2")
 								}
-							} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
-								// If other elevs in STOP
+							} else if localOrderDir != localMovementDirection && externalOrderDir == allMovementDirection[ID] && externalOrderDir == butnTypeDir {
+								// If other elevs is in same dir && local is not
 								takeOrder = false
-								fmt.Println("false - 3")
+								fmt.Println("false - 1")
 								break
-							} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
-								// If no elevs in STOP
-								takeOrder = true
-								fmt.Println("true - 5")
-							} else {
-								fmt.Println("Order error 1!")
+							} else if localOrderDir != localMovementDirection && externalOrderDir != allMovementDirection[ID] {
+								// If no elevs in same dir
+								if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
+									takeOrder = true
+									fmt.Println("true - 3")
+									fmt.Println("My location: ", curLocalFloor, "\tHis location: ", elevStatuses[ID][0])
+									fmt.Println("My dir: ", localMovementDirection, "\tHis dir: ", allMovementDirection[ID])
+									fmt.Println("externalOrderDir: ", externalOrderDir, "\tbutnTypeDir: ", butnTypeDir)
+									// CORRECT
+								} else if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
+									// Else if local has shortest distance
+									if localDistance <= allDistances[ID] {
+										takeOrder = true
+										fmt.Println("true - 4")
+									} else {
+										takeOrder = false
+										fmt.Println("false - 2")
+										break
+									}
+								} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
+									// If other elevs in STOP
+									takeOrder = false
+									fmt.Println("false - 3")
+									break
+								} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
+									// If no elevs in STOP
+									takeOrder = true
+									fmt.Println("true - 5")
+								} else {
+									fmt.Println("Order error 1!")
+								}
+							} else if externalOrderDir == butnTypeDir {
+								fmt.Println("Order error 2!")
+							} else if localOrderDir == butnTypeDir {
+								fmt.Println("Order error 3!")
 							}
-						} else if externalOrderDir == butnTypeDir {
-							fmt.Println("Order error 2!")
-						} else if localOrderDir == butnTypeDir {
-							fmt.Println("Order error 3!")
+						} else { // Elev is ded
+							// make funeral
+							takeOrder = true
+							fmt.Println("funeral prepared")
 						}
-					} else { // Elev is ded
-						// make funeral
-						takeOrder = true
-						fmt.Println("funeral prepared")
 					}
 				}
+			} else if len(allMovementDirection) == 1 {
+				takeOrder = true
 			}
 
 			if takeOrder {
@@ -142,8 +146,6 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 }
 
 func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, localMovementDirection int) {
-	// Bugs! Elev on the way up may stop for HallDown orders
-	//
 	if len(prioritizedOrders) <= 0 {
 		prioritizedOrders = append(prioritizedOrders, orderDestination)
 		//fmt.Println("NEW ORDER APPENDED (CAB): ", orderDestination)

@@ -44,8 +44,7 @@ func InitStateTable(port int) {
 	}
 
 	activeLights = &ActiveLightsMutex{Internal: map[[2]int]bool{}}
-	toggleOffAllBtnLights()
-
+	// toggleOffAllBtnLights() // Find a different solution
 }
 
 func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableTransmitCh chan [7][3]int) {

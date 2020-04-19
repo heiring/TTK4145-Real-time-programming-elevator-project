@@ -126,7 +126,7 @@ func pollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 }
 
 func moveInDir(dir elevio.MotorDirection, newMotorDirCh chan<- elevio.MotorDirection) {
-	elevio.SetMotorDirection(dir)
+	// elevio.SetMotorDirection(dir)
 	statetable.UpdateElevDirection(int(dir))
 	// fmt.Println("newDirPending")
 	newMotorDirCh <- dir
