@@ -54,12 +54,16 @@ func PollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 
 	startWaitCh := make(chan bool)
 	newMotorDirCh := make(chan elevio.MotorDirection)
-	go executeNewMotorDirectionOrWait(startWaitCh, newMotorDirCh)
-	//!!
 	motorFunctionalCh := make(chan bool)
 	orderReceivedCh := make(chan bool)
+
+	go elevio.PollButtons(drvButtons)
+	go elevio.PollFloorSensor(drvFloors)
+	go elevio.PollObstructionSwitch(drvObstr)
+	go elevio.PollStopButton(drvStop)
+	go orderdistributor.PollOrders(newOrder)
+	go executeNewMotorDirectionOrWait(startWaitCh, newMotorDirCh)
 	go monitorMotorStatus(motorFunctionalCh, orderReceivedCh)
-	//!!
 
 	// var currentOrder int
 	// localID := statetable.GetLocalID()
@@ -72,15 +76,14 @@ func PollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 		case a := <-drvObstr:
 			fmt.Println("case drvObstr: obstruction")
 			fmt.Printf("%+v\n", a)
-		case a := <-drvStop:
+		case stopEvent := <-drvStop:
 			fmt.Println("stop button pressed")
-			fmt.Printf("%+v\n", a)
+			fmt.Printf("%+v\n", stopEvent)
 			moveInDir(elevio.MD_Stop, newMotorDirCh)
 			stateTableTransmitCh <- statetable.Get()
 		case order := <-newOrder:
 			go handleNewOrder(order, stateTableTransmitCh, orderReceivedCh, startWaitCh, motorFunctionalCh, newMotorDirCh)
 		default:
-			// fmt.Println("Default yo")
 		}
 
 	}
@@ -156,9 +159,7 @@ func handleNewFloor(floor int, stateTableTransmitCh chan<- [7][3]int, startWaitC
 }
 
 func moveInDir(dir elevio.MotorDirection, newMotorDirCh chan<- elevio.MotorDirection) {
-	// elevio.SetMotorDirection(dir)
 	statetable.UpdateElevDirection(int(dir))
-
 	newMotorDirCh <- dir
 }
 
@@ -166,16 +167,16 @@ func completeCurOrder(startWaitCh chan<- bool, motorFunctionalCh chan<- bool) {
 	curFloor := statetable.GetCurrentFloor()
 	row := curFloor + 3
 	statetable.ResetRow(row)
-	orderdistributor.CompleteCurrentOrder()
+	orderdistributor.RemoveOrder()
 	for butn := elevio.BT_HallUp; butn <= elevio.BT_Cab; butn++ {
 		elevio.SetButtonLamp(butn, curFloor, false)
 	}
 	startWaitCh <- true
-	//!!
 	motorFunctionalCh <- true
-
 }
 
+// executeNewMotorDirectionOrWait gets a signal when an order is completed. Then, the door open lamp is lit for three seconds.
+// After three seconds the elevator may start moving in a potential new direction received on the newMotorDirCh-channel.
 func executeNewMotorDirectionOrWait(startWaitCh <-chan bool, newMotorDirCh <-chan elevio.MotorDirection) {
 	var motorDir elevio.MotorDirection
 	motorDir = elevio.MD_Stop
@@ -189,7 +190,7 @@ func executeNewMotorDirectionOrWait(startWaitCh <-chan bool, newMotorDirCh <-cha
 			startedWaiting = time.Now()
 			elevio.SetDoorOpenLamp(true)
 			doorOpenLightLit = true
-		case newMotorDir := <-newMotorDirCh: //kan flere enn en direction vente i køen??
+		case newMotorDir := <-newMotorDirCh:
 			if newMotorDir != motorDir {
 				motorDir = newMotorDir
 				newDir = true
@@ -231,7 +232,7 @@ func monitorMotorStatus(motorFunctionalCh <-chan bool, orderRecievedCh <-chan bo
 			motorFunctional = true
 			orderCompleted = true
 			lastOrderCompleted = time.Now()
-		case <-orderRecievedCh: //kan en order komme før den forrige er fullført?
+		case <-orderRecievedCh:
 			orderCompleted = false
 			lastOrderReceived = time.Now()
 		case <-ticker.C:

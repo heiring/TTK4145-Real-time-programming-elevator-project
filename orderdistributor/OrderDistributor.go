@@ -1,7 +1,6 @@
 package orderdistributor
 
 import (
-	//"fmt"
 	"fmt"
 	"math"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"../tools"
 )
 
+// prioritizedOrders contains the orders awaiting execution by the local elevator, ordered by priority.
 var prioritizedOrders = make([]int, 0)
 
 func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection map[string]int, elevStatuses map[string][2]int) {
@@ -55,8 +55,6 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 
 		// Hall buttons
 		if (curHallUpOrder != 0 || curHallDownOrder != 0) && !tools.IntInSlice(orderDestination, prioritizedOrders) {
-			//fmt.Println("HALL btn pressed")
-			//fmt.Println("allOrders: ", allOrders)
 			var butnTypeDir int // +1 = Up, -1 = Down
 			if curHallDownOrder != 0 {
 				butnTypeDir = elevio.MD_Down
@@ -81,7 +79,6 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 								// If local only elev in same dir
 								// fmt.Println("SCHWAM 3")
 								takeOrder = true
-								fmt.Println("true - 1")
 							} else if localOrderDir == localMovementDirection && externalOrderDir == allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
 								// Else if local has shortest distance
 								fmt.Println("SCHWAM 4")
@@ -99,7 +96,6 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 								// If other elevs is in same dir && local is not
 								// fmt.Println("SCHWAM 7")
 								takeOrder = false
-								fmt.Println("false - 1")
 								break
 							} else if localOrderDir != localMovementDirection && externalOrderDir != allMovementDirection[ID] {
 								// If no elevs in same dir
@@ -142,13 +138,11 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 									// If other elevs in STOP
 									// fmt.Println("SCHWAM 13")
 									takeOrder = false
-									fmt.Println("false - 3")
 									break
 								} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
 									// If no elevs in STOP
 									// fmt.Println("SCHWAM 14")
 									takeOrder = true
-									fmt.Println("true - 5")
 								} else {
 									// fmt.Println("SCHWAM 15")
 									fmt.Println("Order error 1!")
@@ -179,7 +173,6 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 				}
 			} else if len(allMovementDirection) == 1 {
 				takeOrder = true
-				fmt.Println("Only one elev! wth smh")
 			}
 
 			if takeOrder {
@@ -258,11 +251,12 @@ func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, 
 }
 
 func appendToIndex(index, floor int) {
-	prioritizedOrders = append(prioritizedOrders, 0) // temp
+	prioritizedOrders = append(prioritizedOrders, 0)
 	copy(prioritizedOrders[(index+1):], prioritizedOrders[index:])
 	prioritizedOrders[index] = floor
 }
 
+// PollOrders repeatedly checks for orders awaiting execution
 func PollOrders(receiver chan<- int) {
 	var prevOrder int
 	init := true
@@ -270,7 +264,6 @@ func PollOrders(receiver chan<- int) {
 		time.Sleep(config.PollRate)
 		order := GetOrderFloor()
 		if (order != prevOrder && order != -1) || (order == -1 && init) {
-			//fmt.Println("Sending order...")
 			receiver <- order
 			if init {
 				init = false
@@ -280,15 +273,12 @@ func PollOrders(receiver chan<- int) {
 	}
 }
 
-func CompleteCurrentOrder() {
-	//fmt.Println("REMOVED COMPLETED ORDER")
-	//fmt.Println("OLD PRIO.: ", prioritizedOrders)
+func RemoveOrder() {
 	if len(prioritizedOrders) > 0 {
 		fmt.Println("COMPLETED ORDER ", prioritizedOrders[0])
 		prioritizedOrders = prioritizedOrders[1:]
 		fmt.Println("Remaining ORDERS ", prioritizedOrders)
 	}
-	//fmt.Println("NEW PRIO.: ", prioritizedOrders)
 }
 
 func GetOrderFloor() int {
