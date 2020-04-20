@@ -44,7 +44,7 @@ func main() {
 	// * elev does not stop for new orders in same direction.
 
 	var port string
-	flag.StringVar(&port, "port", "32003", "Specify a port corresponding to an elevator")
+	flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
 	flag.Parse()
 
 	numFloors := 4
@@ -63,8 +63,8 @@ func main() {
 	statetable.InitStateTable(intport)
 	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
 	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
-	fsm.InitFSM(stateTableTransmitCh)
-
+	// fsm.InitFSM(stateTableTransmitCh)
+	go fsm.PollHardwareActions(stateTableTransmitCh)
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 
 	go statetable.UpdateActiveElevators(activeElevatorsCh)

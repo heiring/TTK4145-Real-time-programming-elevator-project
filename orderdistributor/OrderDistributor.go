@@ -4,6 +4,7 @@ import (
 	//"fmt"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"../config"
@@ -32,6 +33,11 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 
 	curLocalFloor := elevStatuses[localID][0]
 	localMovementDirection := allMovementDirection[localID]
+	var nrOfHallDownOrders, nrOfHallUpOrders int
+	for row := 0; row < 4; row++ {
+		nrOfHallUpOrders += allOrders[row][0]
+		nrOfHallDownOrders += allOrders[row][1]
+	}
 
 	for row := 0; row < 4; row++ {
 		curHallUpOrder := allOrders[row][elevio.BT_HallUp]
@@ -60,68 +66,115 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 
 			takeOrder := false
 			if len(allMovementDirection) > 1 {
-				fmt.Println("Multiple elevs!")
+				// fmt.Println("Multiple elevs!")
+				// fmt.Println("Statuses: ", elevStatuses)
+				// fmt.Println("Directions: ", allMovementDirection)
 				for ID := range allMovementDirection {
+					// fmt.Println("CURRENT ID: ", ID)
 					if ID != localID {
+						// fmt.Println("SCHWAM 1")
 						isAlive := elevStatuses[ID][1]
 						if isAlive == 1 {
+							// fmt.Println("SCHWAM 2")
 							externalOrderDir, _ := tools.DivCheck((orderDestination - elevStatuses[ID][0]), int(math.Abs(float64(orderDestination-elevStatuses[ID][0]))))
 							if localOrderDir == localMovementDirection && externalOrderDir != allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
 								// If local only elev in same dir
+								// fmt.Println("SCHWAM 3")
 								takeOrder = true
 								fmt.Println("true - 1")
 							} else if localOrderDir == localMovementDirection && externalOrderDir == allMovementDirection[ID] && (localOrderDir == butnTypeDir || localOrderDir == elevio.MD_Stop) {
 								// Else if local has shortest distance
+								fmt.Println("SCHWAM 4")
 								if localDistance <= allDistances[ID] {
+									// fmt.Println("SCHWAM 5")
 									takeOrder = true
 									fmt.Println("true - 2")
+								} else {
+									// fmt.Println("SCHWAM 6")
+									takeOrder = false
+									fmt.Println("false - 0")
+									break
 								}
 							} else if localOrderDir != localMovementDirection && externalOrderDir == allMovementDirection[ID] && externalOrderDir == butnTypeDir {
 								// If other elevs is in same dir && local is not
+								// fmt.Println("SCHWAM 7")
 								takeOrder = false
 								fmt.Println("false - 1")
 								break
 							} else if localOrderDir != localMovementDirection && externalOrderDir != allMovementDirection[ID] {
 								// If no elevs in same dir
+								// fmt.Println("SCHWAM 8")
 								if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
+									// fmt.Println("SCHWAM 9")
 									takeOrder = true
 									fmt.Println("true - 3")
-									fmt.Println("My location: ", curLocalFloor, "\tHis location: ", elevStatuses[ID][0])
-									fmt.Println("My dir: ", localMovementDirection, "\tHis dir: ", allMovementDirection[ID])
-									fmt.Println("externalOrderDir: ", externalOrderDir, "\tbutnTypeDir: ", butnTypeDir)
+									fmt.Println("Status: ", elevStatuses)
+									fmt.Println("Directions: ", allMovementDirection)
+									// fmt.Println("My location: ", curLocalFloor, "\tHis location: ", elevStatuses[ID][0])
+									// fmt.Println("My dir: ", localMovementDirection, "\tHis dir: ", allMovementDirection[ID])
+									// fmt.Println("externalOrderDir: ", externalOrderDir, "\tbutnTypeDir: ", butnTypeDir)
 									// CORRECT
 								} else if localMovementDirection == elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
 									// Else if local has shortest distance
-									if localDistance <= allDistances[ID] {
+									// fmt.Println("SCHWAM 10")
+									if localDistance < allDistances[ID] {
+										// fmt.Println("SCHWAM 11")
 										takeOrder = true
 										fmt.Println("true - 4")
+										// fmt.Println(localID, " localDist: ", localDistance, "\n", ID, " externalDist: ", allDistances[ID])
+									} else if localDistance == allDistances[ID] {
+										localIDInt, _ := strconv.Atoi(localID)
+										externalIDInt, _ := strconv.Atoi(ID)
+										if localIDInt < externalIDInt {
+											takeOrder = true
+											fmt.Println("true - lucky")
+										} else {
+											takeOrder = false
+											break
+										}
 									} else {
+										// fmt.Println("SCHWAM 12")
 										takeOrder = false
-										fmt.Println("false - 2")
+										fmt.Println("false - 2, better choice: ", ID, "distances: ", localDistance, " - ", allDistances[ID])
 										break
 									}
 								} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
 									// If other elevs in STOP
+									// fmt.Println("SCHWAM 13")
 									takeOrder = false
 									fmt.Println("false - 3")
 									break
 								} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] != elevio.MD_Stop {
 									// If no elevs in STOP
+									// fmt.Println("SCHWAM 14")
 									takeOrder = true
 									fmt.Println("true - 5")
 								} else {
+									// fmt.Println("SCHWAM 15")
 									fmt.Println("Order error 1!")
 								}
-							} else if externalOrderDir == butnTypeDir {
-								fmt.Println("Order error 2!")
-							} else if localOrderDir == butnTypeDir {
-								fmt.Println("Order error 3!")
+								// } else if externalOrderDir == butnTypeDir {
+								// 	// fmt.Println("SCHWAM 16")
+								// 	fmt.Println("Order error 2!")
+								// } else if localOrderDir == butnTypeDir {
+								// 	// fmt.Println("SCHWAM 17")
+								// 	fmt.Println("Order error 3!")
+							} else if externalOrderDir != butnTypeDir {
+								// fmt.Println("SCHWAM 18")
+								if (nrOfHallDownOrders >= 1 && nrOfHallUpOrders == 0) || (nrOfHallDownOrders == 0 && nrOfHallUpOrders >= 1) {
+									takeOrder = false
+									break
+								}
+
 							}
+
 						} else { // Elev is ded
 							// make funeral
+							// fmt.Println("SCHWAM 19")
 							takeOrder = true
-							fmt.Println("funeral prepared")
+							fmt.Println("funeral prepared for ", ID)
 						}
+						// fmt.Println("SCHWAM 20")
 					}
 				}
 			} else if len(allMovementDirection) == 1 {
@@ -148,52 +201,59 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 }
 
 func addOrderToQueue(button elevio.ButtonType, orderDestination, curLocalFloor, localMovementDirection int) {
-	if len(prioritizedOrders) <= 0 {
-		prioritizedOrders = append(prioritizedOrders, orderDestination)
-		//fmt.Println("NEW ORDER APPENDED (CAB): ", orderDestination)
-	} else {
-		for i, lastOrder := range prioritizedOrders {
-			if !tools.IntInSlice(orderDestination, prioritizedOrders) {
-				lastOrderDirection, _ := tools.DivCheck(lastOrder-curLocalFloor, int(math.Abs(float64(lastOrder-curLocalFloor))))
-				curOrderDirection, _ := tools.DivCheck(orderDestination-curLocalFloor, int(math.Abs(float64(orderDestination-curLocalFloor))))
+	// if curLocalFloor != orderDestination {
+	if true {
+		if len(prioritizedOrders) <= 0 {
 
-				// if lastOrder not in direction but neworder is
-				if (localMovementDirection != elevio.MD_Stop) && (lastOrderDirection != localMovementDirection) && (curOrderDirection == localMovementDirection) {
-					if !(button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Up)) ||
-						!(button == elevio.BT_HallUp && curOrderDirection == elevio.MD_Down) {
-						// prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
-						appendToIndex(i, orderDestination)
-						fmt.Println("Append 1")
-						break
-					}
-				}
+			prioritizedOrders = append(prioritizedOrders, orderDestination)
+			fmt.Println("APPENDED TO EMPTY: ", prioritizedOrders)
+			//fmt.Println("NEW ORDER APPENDED (CAB): ", orderDestination)
+		} else {
+			for i, lastOrder := range prioritizedOrders {
+				if !tools.IntInSlice(orderDestination, prioritizedOrders) {
+					lastOrderDirection, _ := tools.DivCheck(lastOrder-curLocalFloor, int(math.Abs(float64(lastOrder-curLocalFloor))))
+					curOrderDirection, _ := tools.DivCheck(orderDestination-curLocalFloor, int(math.Abs(float64(orderDestination-curLocalFloor))))
 
-				// if both orders in same dir and neworder closer than lastOrder
-				if lastOrderDirection == curOrderDirection {
-					newOrderDistance := int(math.Abs(float64(orderDestination - curLocalFloor)))
-					lastOrderDistance := int(math.Abs(float64(lastOrder - curLocalFloor)))
-					if newOrderDistance < lastOrderDistance {
-						if button == elevio.BT_HallUp && curOrderDirection == int(elevio.MD_Up) {
+					// if lastOrder not in direction but neworder is
+					if (localMovementDirection != elevio.MD_Stop) && (lastOrderDirection != localMovementDirection) && (curOrderDirection == localMovementDirection) {
+						if !(button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Up)) ||
+							!(button == elevio.BT_HallUp && curOrderDirection == elevio.MD_Down) {
 							// prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
 							appendToIndex(i, orderDestination)
-							fmt.Println("Append 2")
-							break
-						} else if button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Down) {
-							// prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
-							appendToIndex(i, orderDestination)
-							fmt.Println("Append 3")
+							fmt.Println("Append (1) - ", orderDestination)
 							break
 						}
 					}
-				}
 
-				// Give new order lowest priority
-				if i == (len(prioritizedOrders) - 1) {
-					prioritizedOrders = append(prioritizedOrders, orderDestination)
-					fmt.Println("Append 3")
+					// if both orders in same dir and neworder closer than lastOrder
+					if lastOrderDirection == curOrderDirection {
+						newOrderDistance := int(math.Abs(float64(orderDestination - curLocalFloor)))
+						lastOrderDistance := int(math.Abs(float64(lastOrder - curLocalFloor)))
+						if newOrderDistance < lastOrderDistance {
+							if button == elevio.BT_HallUp && curOrderDirection == int(elevio.MD_Up) {
+								// prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+								appendToIndex(i, orderDestination)
+								fmt.Println("Append (2) - ", orderDestination)
+								break
+							} else if button == elevio.BT_HallDown && curOrderDirection == int(elevio.MD_Down) {
+								// prioritizedOrders = append([]int{orderDestination}, prioritizedOrders...)
+								appendToIndex(i, orderDestination)
+								fmt.Println("Append (3) - ", orderDestination)
+								break
+							}
+						}
+					}
+
+					// Give new order lowest priority
+					if i == (len(prioritizedOrders) - 1) {
+						prioritizedOrders = append(prioritizedOrders, orderDestination)
+						fmt.Println("Append (4) - ", orderDestination)
+					}
 				}
 			}
 		}
+	} else {
+		fmt.Println("Already at floor ", orderDestination)
 	}
 }
 
@@ -224,7 +284,9 @@ func CompleteCurrentOrder() {
 	//fmt.Println("REMOVED COMPLETED ORDER")
 	//fmt.Println("OLD PRIO.: ", prioritizedOrders)
 	if len(prioritizedOrders) > 0 {
+		fmt.Println("COMPLETED ORDER ", prioritizedOrders[0])
 		prioritizedOrders = prioritizedOrders[1:]
+		fmt.Println("Remaining ORDERS ", prioritizedOrders)
 	}
 	//fmt.Println("NEW PRIO.: ", prioritizedOrders)
 }
@@ -234,8 +296,4 @@ func GetOrderFloor() int {
 		return prioritizedOrders[0]
 	}
 	return -1
-}
-
-func GetOrderListLenght() int {
-	return len(prioritizedOrders)
 }

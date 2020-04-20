@@ -56,14 +56,13 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 			ID := elevState.ID
 			if ID != localID {
 				StateTables.Write(ID, elevState.StateTable)
-				updateHallLightsFromExternalOrders()
-				RunOrderDistribution()
 				updatedLocalState, ok := checkIfExternalOrderCompleted(elevState.StateTable)
 				if ok {
 					StateTables.Write(localID, updatedLocalState)
 					stateTableTransmitCh <- Get()
-					fmt.Println("CheckedIFExternalOrderCompleted")
 				}
+				updateHallLightsFromExternalOrders()
+				RunOrderDistribution()
 			}
 
 		default:
@@ -73,15 +72,16 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 }
 
 func checkIfExternalOrderCompleted(elevState [7][3]int) ([7][3]int, bool) {
+	// fmt.Println("Checking external...")
 	positionFloor := elevState[2][1]
 	elevDirection := elevState[1][1]
 	localStateTable := Get()
 	updateLocal := false
 	for col := 0; col < 2; col++ {
 		if (localStateTable[3+positionFloor][col] == 1) && !(col == 0 && elevDirection == int(elevio.MD_Down)) && !(col == 1 && elevDirection == int(elevio.MD_Up)) {
-			// Hall up/down with reversed elev dir will result in order deleted to soon
 			localStateTable[3+positionFloor][col] = 0
 			updateLocal = true
+			fmt.Println("ORDER ", positionFloor, " completed externally!")
 			// We also need to notify the external elev that the order is completed now
 		}
 	}
@@ -128,11 +128,15 @@ func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<-
 	ticker := time.NewTicker(StateTransmissionInterval)
 	//stateTable := StateTables[localID]
 	stateTable := ReadStateTable(localID)
+
 	elevatorState := ElevatorState{ID: localID, StateTable: stateTable}
 	for {
 		select {
 		case stateTable = <-stateTableTransmitCh:
+			fmt.Println("TRANS NEW State")
+			fmt.Println("State: ", stateTable)
 			elevatorState.StateTable = stateTable
+
 		case <-ticker.C:
 			transmitStateCh <- elevatorState
 		default:
@@ -178,19 +182,11 @@ func UpdateStateTableIndex(row, col int, port string, val int, runDistribution b
 	if runDistribution {
 		RunOrderDistribution()
 	}
-
-	/*statetable, ok := StateTables.Read(localID)
-	if !ok {
-		fmt.Println("read error")
-	}statetable
-		if runDistribution {
-			RunOrderDistribution()
-		}
-	*/
 }
 
 func RunOrderDistribution() {
 	allOrders, allDirections, elevStatuses := GetSyncedOrders()
+	// fmt.Println("SyncedOrders!")
 	orderdistributor.DistributeOrders(string(localID), allOrders, allDirections, elevStatuses) //string(localID)
 }
 
@@ -215,20 +211,10 @@ func ResetRow(row int) {
 	}
 }
 
-func getPositionRow(port string) int {
-	stateTable := ReadStateTable(port)
-
-	position := stateTable[2][1]
-	return position
-
-	//position := StateTables[port][2][1]
-	//return position
-}
-
 func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) { //omdøpe til noe som SyncOrdersDirectionsLocations (positions?)
 	var allOrders [4][3]int
 	var allDirections = make(map[string]int)
-	var elevStatuses = make(map[string][2]int) // 1: Position, 2: NetworkAlive, 3: MotorAlive
+	var elevStatuses = make(map[string][2]int) // 1: Position, 2: Alive
 	stateTables := StateTables.ReadWholeMap()
 	for ID, statetable := range stateTables {
 		var status [2]int
@@ -274,16 +260,6 @@ func GetCurrentFloor() int {
 	//return floor
 }
 
-func GetCurrentElevFloor(port string) int {
-	stateTable := ReadStateTable(port)
-
-	floor := stateTable[2][1]
-	return floor
-
-	//floor := StateTables[port][2][1]
-	//return floor
-}
-
 func GetLocalID() string {
 	//stateTable := ReadStateTable(localID)
 	//return strconv.Itoa(stateTable[0][1])
@@ -299,11 +275,6 @@ func Get() [7][3]int {
 	//return StateTables[localID]
 }
 
-func GetStateTables() map[string][7][3]int {
-	return StateTables.ReadWholeMap()
-
-	//return StateTables
-}
 func ReadStateTable(ID string) [7][3]int {
 	stateTable, ok := StateTables.Read(ID)
 	if !ok {
@@ -314,12 +285,4 @@ func ReadStateTable(ID string) [7][3]int {
 
 func UpdateActiveLights(butn elevio.ButtonType, floor int, active bool) {
 	activeLights.Write(int(butn), floor, active)
-}
-
-func checkActiveLights(butn elevio.ButtonType, floor int) bool {
-	isActive, ok := activeLights.Read(int(butn), floor)
-	if !ok {
-		fmt.Println("active lights: read error")
-	}
-	return isActive
 }
