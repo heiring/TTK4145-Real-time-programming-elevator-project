@@ -53,16 +53,22 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 	for {
 		select {
 		case elevState := <-receiveStateCh:
-			ID := elevState.ID
-			if ID != localID {
-				StateTables.Write(ID, elevState.StateTable)
-				updatedLocalState, ok := checkIfExternalOrderCompleted(elevState.StateTable)
-				if ok {
-					StateTables.Write(localID, updatedLocalState)
-					stateTableTransmitCh <- Get()
+			if elevState.ID != localID {
+				for ID, elevState := elevState.StateTables {
+					// ID := elevState.ID
+					if ID != localID {
+						StateTables.Write(ID, elevState.StateTable)
+						updatedLocalState, ok := checkIfExternalOrderCompleted(elevState.StateTable)
+						if ok {
+							StateTables.Write(localID, updatedLocalState)
+							stateTableTransmitCh <- Get()
+						}
+						updateHallLightsFromExternalOrders()
+						RunOrderDistribution()
+					}
 				}
-				updateHallLightsFromExternalOrders()
-				RunOrderDistribution()
+			} else {
+				
 			}
 
 		default:
