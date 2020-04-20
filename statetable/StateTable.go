@@ -75,13 +75,13 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 			ID := elevState.ID
 			if ID != localID {
 				StateTables.Write(ID, elevState.StateTable)
-				updateHallLightsFromExternalOrders()
-				RunOrderDistribution()
 				updatedLocalState, ok := checkIfExternalOrderCompleted(elevState.StateTable)
 				if ok {
 					StateTables.Write(localID, updatedLocalState)
 					stateTableTransmitCh <- Get()
 				}
+				updateHallLightsFromExternalOrders()
+				RunOrderDistribution()
 			}
 		default:
 		}
@@ -90,6 +90,7 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 
 //checkIfExternalOrderCompleted checks if one of the external elevators has completed an order linked to hall button being pressed.
 func checkIfExternalOrderCompleted(elevState [7][3]int) ([7][3]int, bool) {
+	// fmt.Println("Checking external...")
 	positionFloor := elevState[2][1]
 	elevDirection := elevState[1][1]
 	localStateTable := Get()
@@ -98,6 +99,8 @@ func checkIfExternalOrderCompleted(elevState [7][3]int) ([7][3]int, bool) {
 		if (localStateTable[3+positionFloor][col] == 1) && !(col == 0 && elevDirection == int(elevio.MD_Down)) && !(col == 1 && elevDirection == int(elevio.MD_Up)) {
 			localStateTable[3+positionFloor][col] = 0
 			updateLocal = true
+			fmt.Println("ORDER ", positionFloor, " completed externally!")
+			// We also need to notify the external elev that the order is completed now
 		}
 	}
 	return localStateTable, updateLocal
@@ -137,11 +140,15 @@ func toggleOffAllBtnLights() {
 func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState) {
 	ticker := time.NewTicker(config.StateTransmissionInterval)
 	stateTable := ReadStateTable(localID)
+
 	elevatorState := ElevatorState{ID: localID, StateTable: stateTable}
 	for {
 		select {
 		case stateTable = <-stateTableTransmitCh:
+			fmt.Println("TRANS NEW State")
+			fmt.Println("State: ", stateTable)
 			elevatorState.StateTable = stateTable
+
 		case <-ticker.C:
 			transmitStateCh <- elevatorState
 		default:
@@ -186,8 +193,9 @@ func UpdateStateTableIndex(row, col int, ID string, val int, runDistribution boo
 }
 
 func RunOrderDistribution() {
-	allOrders, allElevDirections, elevPositionsAndLifeStatuses := GetSyncedOrders()
-	orderdistributor.DistributeOrders(string(localID), allOrders, allElevDirections, elevPositionsAndLifeStatuses)
+	allOrders, allDirections, elevStatuses := GetSyncedOrders()
+	// fmt.Println("SyncedOrders!")
+	orderdistributor.DistributeOrders(string(localID), allOrders, allDirections, elevStatuses) //string(localID)
 }
 
 func UpdateElevLastFLoor(val int) {
@@ -211,11 +219,10 @@ func ResetRow(row int) {
 	}
 }
 
-//GetSyncedOrders returns all the information which is required for the local elevator to calculate its next order.
-func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) {
+func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) { //omdøpe til noe som SyncOrdersDirectionsLocations (positions?)
 	var allOrders [4][3]int
-	var allElevDirections = make(map[string]int)
-	var elevPositionsAndLifeStatuses = make(map[string][2]int)
+	var allDirections = make(map[string]int)
+	var elevStatuses = make(map[string][2]int) // 1: Position, 2: Alive
 	stateTables := StateTables.ReadWholeMap()
 	for ID, statetable := range stateTables {
 		var status [2]int
@@ -232,11 +239,11 @@ func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) {
 				allOrders[row][2] = statetable[row+3][2]
 			}
 		}
-		allElevDirections[ID] = statetable[1][1]
+		allDirections[ID] = statetable[1][1]
 		status[0] = statetable[2][1]
-		elevPositionsAndLifeStatuses[ID] = status
+		elevStatuses[ID] = status
 	}
-	return allOrders, allElevDirections, elevPositionsAndLifeStatuses
+	return allOrders, allDirections, elevStatuses
 }
 
 func GetElevDirection(port string) int {
@@ -247,8 +254,12 @@ func GetElevDirection(port string) int {
 
 func GetCurrentFloor() int {
 	stateTable := ReadStateTable(localID)
+
 	floor := stateTable[2][1]
 	return floor
+
+	//floor := StateTables[localID][2][1]
+	//return floor
 }
 
 func GetLocalID() string {

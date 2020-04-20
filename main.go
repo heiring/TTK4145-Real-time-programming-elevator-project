@@ -5,16 +5,16 @@ import (
 	"strconv"
 	"time"
 
-	c "./config"
+	. "./config"
 	"./elevio"
-	"./motorcontroller"
+	"./fsm"
 	"./packetprocessor"
 	"./statetable"
 )
 
 func main() {
 	var port string
-	flag.StringVar(&port, "port", "32003", "Specify a port corresponding to an elevator")
+	flag.StringVar(&port, "port", "32001", "Specify a port corresponding to an elevator")
 	flag.Parse()
 
 	numFloors := 4
@@ -32,8 +32,10 @@ func main() {
 
 	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
 	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
-	go motorcontroller.MotorController(stateTableTransmitCh)
-	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, c.StateTransmissionInterval, c.ElevatorTimeout, c.LastUpdateInterval, c.ActiveElevatorsTransmissionInterval, c.TransmissionPort)
+	// fsm.InitFSM(stateTableTransmitCh)
+	go fsm.PollHardwareActions(stateTableTransmitCh)
+	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
+
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
 
 	for true {
