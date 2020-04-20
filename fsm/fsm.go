@@ -23,7 +23,7 @@ const (
 
 var currentOrder int
 
-func InitFSM(transmitStateTableCh chan<- [7][3]int) {
+func InitFSM(transmitStateTableCh chan<- map[string][7][3]int) {
 	// moveInDir(elevio.MD_Down)
 	//!!
 	//elevio.SetMotorDirection(elevio.MD_Down)
@@ -39,7 +39,7 @@ func getCurrentOrder() int {
 	return currentOrder
 }
 
-func PollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
+func PollHardwareActions(stateTablesTransmitCh chan<- map[string][7][3]int) {
 	drvButtons := make(chan elevio.ButtonEvent)
 	drvFloors := make(chan int)
 	drvObstr := make(chan bool)
@@ -70,9 +70,9 @@ func PollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 	for {
 		select {
 		case butn := <-drvButtons:
-			handleButtonPressed(butn, stateTableTransmitCh)
+			handleButtonPressed(butn, stateTablesTransmitCh)
 		case floor := <-drvFloors:
-			go handleNewFloor(floor, stateTableTransmitCh, startWaitCh, motorFunctionalCh, newMotorDirCh)
+			go handleNewFloor(floor, stateTablesTransmitCh, startWaitCh, motorFunctionalCh, newMotorDirCh)
 		case a := <-drvObstr:
 			fmt.Println("case drvObstr: obstruction")
 			fmt.Printf("%+v\n", a)
@@ -80,26 +80,26 @@ func PollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 			fmt.Println("stop button pressed")
 			fmt.Printf("%+v\n", stopEvent)
 			moveInDir(elevio.MD_Stop, newMotorDirCh)
-			stateTableTransmitCh <- statetable.Get()
+			stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 		case order := <-newOrder:
-			go handleNewOrder(order, stateTableTransmitCh, orderReceivedCh, startWaitCh, motorFunctionalCh, newMotorDirCh)
+			go handleNewOrder(order, stateTablesTransmitCh, orderReceivedCh, startWaitCh, motorFunctionalCh, newMotorDirCh)
 		default:
 		}
 
 	}
 }
 
-func handleButtonPressed(butn elevio.ButtonEvent, stateTableTransmitCh chan<- [7][3]int) {
+func handleButtonPressed(butn elevio.ButtonEvent, stateTablesTransmitCh chan<- map[string][7][3]int) {
 	localID := statetable.GetLocalID()
 	var row int = 3 + butn.Floor
 	var col int = int(butn.Button)
 	elevio.SetButtonLamp(butn.Button, butn.Floor, true)
 	statetable.UpdateActiveLights(butn.Button, butn.Floor, true)
 	statetable.UpdateStateTableIndex(row, col, localID, 1, true)
-	stateTableTransmitCh <- statetable.Get()
+	stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 }
 
-func handleNewOrder(order int, stateTableTransmitCh chan<- [7][3]int, orderReceivedCh, startWaitCh, motorFunctionalCh chan<- bool, newMotorDirCh chan<- elevio.MotorDirection) {
+func handleNewOrder(order int, stateTablesTransmitCh chan<- map[string][7][3]int, orderReceivedCh, startWaitCh, motorFunctionalCh chan<- bool, newMotorDirCh chan<- elevio.MotorDirection) {
 	orderReceivedCh <- true
 	localID := statetable.GetLocalID()
 	// currentOrder = order
@@ -108,29 +108,29 @@ func handleNewOrder(order int, stateTableTransmitCh chan<- [7][3]int, orderRecei
 	currentOrder := getCurrentOrder() //!!!
 	if currentOrder == -1 {
 		moveInDir(elevio.MD_Down, newMotorDirCh)
-		stateTableTransmitCh <- statetable.Get()
+		stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 	} else {
 		currentFloor := statetable.GetCurrentFloor()
 		currentDirection := statetable.GetElevDirection(localID)
 		if currentOrder == currentFloor {
 			moveInDir(elevio.MD_Stop, newMotorDirCh)
 			completeCurOrder(startWaitCh, motorFunctionalCh)
-			stateTableTransmitCh <- statetable.Get()
+			stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 			// time.Sleep(3 * time.Second) //??????????????????????????????????????????
 		} else if currentDirection == elevio.MD_Stop {
 			newDirection, _ := tools.DivCheck((currentOrder - currentFloor), int(math.Abs(float64(currentOrder-currentFloor))))
 			moveInDir(elevio.MotorDirection(newDirection), newMotorDirCh)
-			stateTableTransmitCh <- statetable.Get()
+			stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 		}
 	}
 }
 
-func handleNewFloor(floor int, stateTableTransmitCh chan<- [7][3]int, startWaitCh, motorFunctionalCh chan<- bool, newMotorDirCh chan<- elevio.MotorDirection) {
+func handleNewFloor(floor int, stateTablesTransmitCh chan<- map[string][7][3]int, startWaitCh, motorFunctionalCh chan<- bool, newMotorDirCh chan<- elevio.MotorDirection) {
 	localID := statetable.GetLocalID()
 	currentOrder := getCurrentOrder()
 	lastFloor := statetable.GetCurrentFloor()
 	curDir := statetable.GetElevDirection(localID)
-	stateTableTransmitCh <- statetable.Get()
+	stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 	if lastFloor != statetable.UnknownFloor {
 		elevio.SetFloorIndicator(lastFloor)
 	}
@@ -140,21 +140,21 @@ func handleNewFloor(floor int, stateTableTransmitCh chan<- [7][3]int, startWaitC
 	if currentOrder == floor {
 		moveInDir(elevio.MD_Stop, newMotorDirCh)
 		completeCurOrder(startWaitCh, motorFunctionalCh)
-		stateTableTransmitCh <- statetable.Get()
+		stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 		// time.Sleep(3 * time.Second)
 	} else if currentOrder == -1 {
 		moveInDir(elevio.MD_Stop, newMotorDirCh)
-		stateTableTransmitCh <- statetable.Get()
+		stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 		motorFunctionalCh <- true
 	} else if currentOrder > floor {
 		moveInDir(elevio.MD_Up, newMotorDirCh)
-		stateTableTransmitCh <- statetable.Get()
+		stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 	} else if currentOrder < floor {
 		moveInDir(elevio.MD_Down, newMotorDirCh)
-		stateTableTransmitCh <- statetable.Get()
+		stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 	} else if (floor == 0 && curDir == int(elevio.MD_Down)) || (floor == 3 && curDir == int(elevio.MD_Up)) {
 		moveInDir(elevio.MD_Stop, newMotorDirCh)
-		stateTableTransmitCh <- statetable.Get()
+		stateTablesTransmitCh <- statetable.StateTables.ReadWholeMap()
 	}
 }
 

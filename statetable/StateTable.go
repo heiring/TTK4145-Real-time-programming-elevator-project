@@ -68,7 +68,7 @@ func InitStateTable(port int) {
 }
 
 //UpdateStateTableFromPacket receives the state table transmitted from other elevators and updates their information in StateTables. Hall buttons are also synchronized.
-func UpdateStateTableFromPacket(receiveStateTablesCh <-chan ElevatorState, stateTablesTransmitCh chan [7][3]int) {
+func UpdateStateTableFromPacket(receiveStateTablesCh <-chan ElevatorState, stateTablesTransmitCh chan map[string][7][3]int) {
 	for {
 		select {
 		case receivedStateTables := <-receiveStateTablesCh:
@@ -80,7 +80,7 @@ func UpdateStateTableFromPacket(receiveStateTablesCh <-chan ElevatorState, state
 					updatedLocalState, ok := checkIfExternalOrderCompleted(statetable)
 					if ok {
 						StateTables.Write(localID, updatedLocalState)
-						stateTablesTransmitCh <- Get()
+						stateTablesTransmitCh <- StateTables.ReadWholeMap()
 					}
 					updateHallLightsFromExternalOrders()
 					RunOrderDistribution()
@@ -95,6 +95,7 @@ func UpdateStateTableFromPacket(receiveStateTablesCh <-chan ElevatorState, state
 						updatedStatetable[row+3][2] = oldStatetable[row+3][2]
 					}
 					StateTables.Write(localID, updatedStatetable)
+					RunOrderDistribution()
 				}
 			}
 		default:
@@ -159,8 +160,6 @@ func TransmitState(stateTablesTransmitCh <-chan map[string][7][3]int, transmitSt
 	for {
 		select {
 		case stateTables = <-stateTablesTransmitCh:
-			fmt.Println("TRANS NEW State")
-			fmt.Println("State: ", stateTables)
 			elevatorState.StateTables = stateTables
 
 		case <-ticker.C:
@@ -185,6 +184,7 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 						RunOrderDistribution()
 					}
 				} else {
+					fmt.Println("Funeral ceremony /begin")
 					if stateTableUpdate[0][0] == 1 {
 						stateTableUpdate[0][0] = 0
 						StateTables.Write(ID, stateTableUpdate)

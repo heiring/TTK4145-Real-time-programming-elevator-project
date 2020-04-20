@@ -104,8 +104,8 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 									// fmt.Println("SCHWAM 9")
 									takeOrder = true
 									fmt.Println("true - 3")
-									fmt.Println("Status: ", elevStatuses)
-									fmt.Println("Directions: ", allMovementDirection)
+									// fmt.Println("Status: ", elevStatuses)
+									// fmt.Println("Directions: ", allMovementDirection)
 									// fmt.Println("My location: ", curLocalFloor, "\tHis location: ", elevStatuses[ID][0])
 									// fmt.Println("My dir: ", localMovementDirection, "\tHis dir: ", allMovementDirection[ID])
 									// fmt.Println("externalOrderDir: ", externalOrderDir, "\tbutnTypeDir: ", butnTypeDir)
@@ -131,7 +131,7 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 									} else {
 										// fmt.Println("SCHWAM 12")
 										takeOrder = false
-										fmt.Println("false - 2, better choice: ", ID, "distances: ", localDistance, " - ", allDistances[ID])
+										// fmt.Println("false - 2, better choice: ", ID, "distances: ", localDistance, " - ", allDistances[ID])
 										break
 									}
 								} else if localMovementDirection != elevio.MD_Stop && allMovementDirection[ID] == elevio.MD_Stop {
