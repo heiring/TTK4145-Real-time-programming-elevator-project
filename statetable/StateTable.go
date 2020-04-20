@@ -5,21 +5,42 @@ import (
 	"strconv"
 	"time"
 
-	. "../config"
+	"../config"
 	"../elevio"
+	"../mapsync"
 	"../orderdistributor"
 )
 
-var StateTables *StateTablesMutex
+// StateTables is a map with the elevator IDs as keys and their respective state table as the value.
+// A state table describes the correseponding elevators state (last motor direction, last floor visited, ID, network online/offline status, motor functionality status and buttons pressed)
+//
+// A state table has the following form:
+//	-----------------------------------------
+//	| Online	|	ID		| Motor working	|
+//	| x			| Direction	|		x		|
+//	| x			| Position	|		x		|
+//	| Hall Up	| Hall Down | 		Cab		| Floor 1
+//	| Hall Up	| Hall Down | 		Cab		| Floor 2
+//	| Hall Up	| Hall Down | 		Cab		| Floor 3
+//	| Hall Up	| Hall Down | 		Cab		| Floor 4
+//	-----------------------------------------
+//  x - not in use
+var StateTables *mapsync.StateTablesSync
 
-var activeLights *ActiveLightsMutex
-
+// Active lights is a map with the keys being slices with button type and floor as elements, and the values being bools indicating if the lights are shut on or off.
+var activeLights *mapsync.ActiveLightsSync
 var localID string
 
 const UnknownFloor int = -1
 
+// ElevatorState is the data type which will be broadcasted from each elevator
+type ElevatorState struct {
+	ID         string
+	StateTable [7][3]int
+}
+
+// InitStateTable initialized the local state table with appropriate values.
 func InitStateTable(port int) {
-	fmt.Println("InitStateTable")
 	var tempStateTable [7][3]int
 	for row, cells := range tempStateTable {
 		for _, col := range cells {
@@ -37,18 +58,16 @@ func InitStateTable(port int) {
 
 	localID = strconv.Itoa(port)
 
-	//StateTables[localID] = tempStateTable
-
-	StateTables = &StateTablesMutex{
-		Internal: map[string][7][3]int{
+	StateTables = &mapsync.StateTablesSync{
+		StateTables: map[string][7][3]int{
 			localID: tempStateTable,
 		},
 	}
 
-	activeLights = &ActiveLightsMutex{Internal: map[[2]int]bool{}}
-	// toggleOffAllBtnLights() // Find a different solution
+	activeLights = &mapsync.ActiveLightsSync{ActiveLights: map[[2]int]bool{}}
 }
 
+//UpdateStateTableFromPacket receives the state table transmitted from other elevators and updates their information in StateTables. Hall buttons are also synchronized.
 func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableTransmitCh chan [7][3]int) {
 	for {
 		select {
@@ -62,16 +81,14 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 				if ok {
 					StateTables.Write(localID, updatedLocalState)
 					stateTableTransmitCh <- Get()
-					fmt.Println("CheckedIFExternalOrderCompleted")
 				}
 			}
-
 		default:
-			//do stuff
 		}
 	}
 }
 
+//checkIfExternalOrderCompleted checks if one of the external elevators has completed an order linked to hall button being pressed.
 func checkIfExternalOrderCompleted(elevState [7][3]int) ([7][3]int, bool) {
 	positionFloor := elevState[2][1]
 	elevDirection := elevState[1][1]
@@ -79,10 +96,8 @@ func checkIfExternalOrderCompleted(elevState [7][3]int) ([7][3]int, bool) {
 	updateLocal := false
 	for col := 0; col < 2; col++ {
 		if (localStateTable[3+positionFloor][col] == 1) && !(col == 0 && elevDirection == int(elevio.MD_Down)) && !(col == 1 && elevDirection == int(elevio.MD_Up)) {
-			// Hall up/down with reversed elev dir will result in order deleted to soon
 			localStateTable[3+positionFloor][col] = 0
 			updateLocal = true
-			// We also need to notify the external elev that the order is completed now
 		}
 	}
 	return localStateTable, updateLocal
@@ -96,18 +111,12 @@ func updateHallLightsFromExternalOrders() {
 			if allOrders[floor][butn] == 1 {
 				if !activeLightsUpdate[[2]int{int(butn), floor}] {
 					elevio.SetButtonLamp(butn, floor, true)
-
 					activeLightsUpdate[[2]int{int(butn), floor}] = true
-
-					fmt.Println("ON - BTN LIGHT FROM PACKET")
 				}
 			} else {
 				if activeLightsUpdate[[2]int{int(butn), floor}] {
 					elevio.SetButtonLamp(butn, floor, false)
-
 					activeLightsUpdate[[2]int{int(butn), floor}] = false
-
-					// fmt.Println("OFF - BTN LIGHT FROM PACKET")
 				}
 			}
 
@@ -124,9 +133,9 @@ func toggleOffAllBtnLights() {
 	}
 }
 
+// TransmitState repeatedly outputs the state table to be transmitted. The state table to be transmitted is updated via the stateTableTransmitCh-channel
 func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState) {
-	ticker := time.NewTicker(StateTransmissionInterval)
-	//stateTable := StateTables[localID]
+	ticker := time.NewTicker(config.StateTransmissionInterval)
 	stateTable := ReadStateTable(localID)
 	elevatorState := ElevatorState{ID: localID, StateTable: stateTable}
 	for {
@@ -136,11 +145,11 @@ func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<-
 		case <-ticker.C:
 			transmitStateCh <- elevatorState
 		default:
-			//do nothing
 		}
 	}
 }
 
+//UpdateActiveElevators updates StateTables if an elevator goes offline or comes back online.
 func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 	for {
 		select {
@@ -150,48 +159,35 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 
 				if isAlive {
 					if stateTableUpdate[0][0] == 0 {
-						//UpdateStateTableIndex(0, 0, ID, 1, true)
 						stateTableUpdate[0][0] = 1
 						StateTables.Write(ID, stateTableUpdate)
 						RunOrderDistribution()
 					}
 				} else {
 					if stateTableUpdate[0][0] == 1 {
-						//UpdateStateTableIndex(0, 0, ID, 0, true)
 						stateTableUpdate[0][0] = 0
 						StateTables.Write(ID, stateTableUpdate)
 						RunOrderDistribution()
-						fmt.Println("DANGER")
 					}
 				}
 			}
 		default:
-			//do stuff
 		}
 	}
 }
 
-func UpdateStateTableIndex(row, col int, port string, val int, runDistribution bool) { // stateTableTransmitCh chan<- [7][9]int) {
-	stateTable := ReadStateTable(port)
+func UpdateStateTableIndex(row, col int, ID string, val int, runDistribution bool) {
+	stateTable := ReadStateTable(ID)
 	stateTable[row][col] = val
-	StateTables.Write(port, stateTable)
+	StateTables.Write(ID, stateTable)
 	if runDistribution {
 		RunOrderDistribution()
 	}
-
-	/*statetable, ok := StateTables.Read(localID)
-	if !ok {
-		fmt.Println("read error")
-	}statetable
-		if runDistribution {
-			RunOrderDistribution()
-		}
-	*/
 }
 
 func RunOrderDistribution() {
-	allOrders, allDirections, elevStatuses := GetSyncedOrders()
-	orderdistributor.DistributeOrders(string(localID), allOrders, allDirections, elevStatuses) //string(localID)
+	allOrders, allElevDirections, elevPositionsAndLifeStatuses := GetSyncedOrders()
+	orderdistributor.DistributeOrders(string(localID), allOrders, allElevDirections, elevPositionsAndLifeStatuses)
 }
 
 func UpdateElevLastFLoor(val int) {
@@ -215,27 +211,16 @@ func ResetRow(row int) {
 	}
 }
 
-func getPositionRow(port string) int {
-	stateTable := ReadStateTable(port)
-
-	position := stateTable[2][1]
-	return position
-
-	//position := StateTables[port][2][1]
-	//return position
-}
-
-func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) { //omdøpe til noe som SyncOrdersDirectionsLocations (positions?)
+//GetSyncedOrders returns all the information which is required for the local elevator to calculate its next order.
+func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) {
 	var allOrders [4][3]int
-	var allDirections = make(map[string]int)
-	var elevStatuses = make(map[string][2]int) // 1: Position, 2: NetworkAlive, 3: MotorAlive
+	var allElevDirections = make(map[string]int)
+	var elevPositionsAndLifeStatuses = make(map[string][2]int)
 	stateTables := StateTables.ReadWholeMap()
 	for ID, statetable := range stateTables {
 		var status [2]int
 		isAlive := statetable[0][0] * statetable[0][2]
-		// isAlive := statetable[0][0]
 		status[1] = isAlive
-
 		for row := 0; row < 4; row++ {
 			for col := 0; col < 2; col++ {
 				allOrders[row][col] += statetable[row+3][col]
@@ -247,63 +232,35 @@ func GetSyncedOrders() ([4][3]int, map[string]int, map[string][2]int) { //omdøp
 				allOrders[row][2] = statetable[row+3][2]
 			}
 		}
-		allDirections[ID] = statetable[1][1]
+		allElevDirections[ID] = statetable[1][1]
 		status[0] = statetable[2][1]
-		elevStatuses[ID] = status
+		elevPositionsAndLifeStatuses[ID] = status
 	}
-	return allOrders, allDirections, elevStatuses
+	return allOrders, allElevDirections, elevPositionsAndLifeStatuses
 }
 
 func GetElevDirection(port string) int {
 	stateTable := ReadStateTable(port)
-
 	direction := stateTable[1][1]
 	return direction
-
-	//direction := StateTables[port][1][1]
-	//return direction
 }
 
 func GetCurrentFloor() int {
 	stateTable := ReadStateTable(localID)
-
 	floor := stateTable[2][1]
 	return floor
-
-	//floor := StateTables[localID][2][1]
-	//return floor
-}
-
-func GetCurrentElevFloor(port string) int {
-	stateTable := ReadStateTable(port)
-
-	floor := stateTable[2][1]
-	return floor
-
-	//floor := StateTables[port][2][1]
-	//return floor
 }
 
 func GetLocalID() string {
-	//stateTable := ReadStateTable(localID)
-	//return strconv.Itoa(stateTable[0][1])
-
 	return localID
 }
 
 func Get() [7][3]int {
 	stateTable := ReadStateTable(localID)
-
 	return stateTable
 
-	//return StateTables[localID]
 }
 
-func GetStateTables() map[string][7][3]int {
-	return StateTables.ReadWholeMap()
-
-	//return StateTables
-}
 func ReadStateTable(ID string) [7][3]int {
 	stateTable, ok := StateTables.Read(ID)
 	if !ok {
@@ -314,12 +271,4 @@ func ReadStateTable(ID string) [7][3]int {
 
 func UpdateActiveLights(butn elevio.ButtonType, floor int, active bool) {
 	activeLights.Write(int(butn), floor, active)
-}
-
-func checkActiveLights(butn elevio.ButtonType, floor int) bool {
-	isActive, ok := activeLights.Read(int(butn), floor)
-	if !ok {
-		fmt.Println("active lights: read error")
-	}
-	return isActive
 }
