@@ -44,7 +44,20 @@ func main() {
 	go statetable.UpdateActiveElevators(activeElevatorsCh, saveStateForRecoveryCh, recoveryIDCh)
 
 	for true {
-		time.Sleep(10 * time.Second)
+		time.Sleep(2 * time.Second)
+		// st := statetable.StateTables.ReadWholeMap()
+		// fmt.Println("StateTables:")
+		// fmt.Println("________")
+		// for row := 0; row < 7; row++ {
+		// 	fmt.Print("|", st["32000"][row][0], "|")
+		// 	fmt.Print("|", st["32000"][row][1], "|")
+		// 	fmt.Print("|", st["32000"][row][2], "|")
+		// 	fmt.Print("\t\t")
+		// 	fmt.Print("|", st["32001"][row][0], "|")
+		// 	fmt.Print("|", st["32001"][row][1], "|")
+		// 	fmt.Print("|", st["32001"][row][2], "|\n")
+		// }
+		// fmt.Println("________")
 	}
 
 }

@@ -42,15 +42,9 @@ func getCurrentOrder() int {
 func PollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 	drvButtons := make(chan elevio.ButtonEvent)
 	drvFloors := make(chan int)
-	drvObstr := make(chan bool)
-	drvStop := make(chan bool)
+	// drvObstr := make(chan bool)
+	// drvStop := make(chan bool)
 	newOrder := make(chan int)
-
-	go elevio.PollButtons(drvButtons)
-	go elevio.PollFloorSensor(drvFloors)
-	go elevio.PollObstructionSwitch(drvObstr)
-	go elevio.PollStopButton(drvStop)
-	go orderdistributor.PollOrders(newOrder)
 
 	startWaitCh := make(chan bool)
 	newMotorDirCh := make(chan elevio.MotorDirection)
@@ -59,11 +53,11 @@ func PollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 
 	go elevio.PollButtons(drvButtons)
 	go elevio.PollFloorSensor(drvFloors)
-	go elevio.PollObstructionSwitch(drvObstr)
-	go elevio.PollStopButton(drvStop)
+	// go elevio.PollObstructionSwitch(drvObstr)
+	// go elevio.PollStopButton(drvStop)
 	go orderdistributor.PollOrders(newOrder)
 	go executeNewMotorDirectionOrWait(startWaitCh, newMotorDirCh)
-	go monitorMotorStatus(motorFunctionalCh, orderReceivedCh)
+	go monitorMotorStatus(motorFunctionalCh, orderReceivedCh, stateTableTransmitCh)
 
 	// var currentOrder int
 	// localID := statetable.GetLocalID()
@@ -71,18 +65,19 @@ func PollHardwareActions(stateTableTransmitCh chan<- [7][3]int) {
 		select {
 		case butn := <-drvButtons:
 			handleButtonPressed(butn, stateTableTransmitCh)
+			fmt.Println("BTN PRESSED")
 		case floor := <-drvFloors:
-			go handleNewFloor(floor, stateTableTransmitCh, startWaitCh, motorFunctionalCh, newMotorDirCh)
-		case a := <-drvObstr:
-			fmt.Println("case drvObstr: obstruction")
-			fmt.Printf("%+v\n", a)
-		case stopEvent := <-drvStop:
-			fmt.Println("stop button pressed")
-			fmt.Printf("%+v\n", stopEvent)
-			moveInDir(elevio.MD_Stop, newMotorDirCh)
-			stateTableTransmitCh <- statetable.Get()
+			handleNewFloor(floor, stateTableTransmitCh, startWaitCh, motorFunctionalCh, newMotorDirCh)
+		// case a := <-drvObstr:
+		// 	fmt.Println("case drvObstr: obstruction")
+		// 	fmt.Printf("%+v\n", a)
+		// case stopEvent := <-drvStop:
+		// 	fmt.Println("stop button pressed")
+		// 	fmt.Printf("%+v\n", stopEvent)
+		// 	moveInDir(elevio.MD_Stop, newMotorDirCh)
+		// 	stateTableTransmitCh <- statetable.Get()
 		case order := <-newOrder:
-			go handleNewOrder(order, stateTableTransmitCh, orderReceivedCh, startWaitCh, motorFunctionalCh, newMotorDirCh)
+			handleNewOrder(order, stateTableTransmitCh, orderReceivedCh, startWaitCh, motorFunctionalCh, newMotorDirCh)
 		default:
 		}
 
@@ -218,7 +213,7 @@ func executeNewMotorDirectionOrWait(startWaitCh <-chan bool, newMotorDirCh <-cha
 	}
 }
 
-func monitorMotorStatus(motorFunctionalCh <-chan bool, orderRecievedCh <-chan bool) {
+func monitorMotorStatus(motorFunctionalCh <-chan bool, orderRecievedCh <-chan bool, stateTableTransmitCh chan<- [7][3]int) {
 	motorFunctional := true
 	orderCompleted := true
 	lastOrderCompleted := time.Now()
@@ -234,10 +229,12 @@ func monitorMotorStatus(motorFunctionalCh <-chan bool, orderRecievedCh <-chan bo
 			lastOrderCompleted = time.Now()
 		case <-orderRecievedCh:
 			orderCompleted = false
+			fmt.Println("MOTOR ORDER RECEIVED")
 			lastOrderReceived = time.Now()
 		case <-ticker.C:
 			if time.Now().Sub(lastOrderCompleted) > 8000*time.Millisecond && time.Now().Sub(lastOrderReceived) > 8000*time.Millisecond && !orderCompleted {
 				motorFunctional = false
+				fmt.Println("MOTOR FAILED")
 			}
 			stateTable := statetable.ReadStateTable(localID)
 			if motorFunctional {
@@ -245,12 +242,15 @@ func monitorMotorStatus(motorFunctionalCh <-chan bool, orderRecievedCh <-chan bo
 					stateTable[0][2] = 1
 					statetable.StateTables.Write(localID, stateTable)
 					statetable.RunOrderDistribution()
+					stateTableTransmitCh <- statetable.Get()
 				}
 			} else {
 				if stateTable[0][2] == 1 {
 					stateTable[0][2] = 0
+					fmt.Println("MOTOR IS NOT ALIVE RIP")
 					statetable.StateTables.Write(localID, stateTable)
 					statetable.RunOrderDistribution()
+					stateTableTransmitCh <- statetable.Get()
 				}
 			}
 		default:

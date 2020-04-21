@@ -30,7 +30,6 @@ func DistributeOrders(localID string, allOrders [4][3]int, allMovementDirection 
 	// If one elevator is not alive:
 	// Remove all orders except the current one, in order to take extra orders as well
 	// ***********************************************************************************
-
 	curLocalFloor := elevStatuses[localID][0]
 	localMovementDirection := allMovementDirection[localID]
 	var nrOfHallDownOrders, nrOfHallUpOrders int

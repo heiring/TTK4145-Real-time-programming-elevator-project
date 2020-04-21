@@ -77,8 +77,11 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 			if ID != localID {
 
 				stable, ok := StateTables.ReadWholeMap()[ID]
-				if stable[0][0] != 0 && ok || !ok {
+				if (stable[0][0] != 0 && receivedState.StateTable[0][0] != 0 && ok) || !ok {
 
+					if receivedState.StateTable[0][2] == 0 {
+						fmt.Println("DAyumn he ded yo")
+					}
 					StateTables.Write(ID, receivedState.StateTable)
 					updatedLocalState, ok := checkIfExternalOrderCompleted(receivedState.StateTable)
 					if ok {
@@ -87,6 +90,8 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 					}
 					updateHallLightsFromExternalOrders()
 					RunOrderDistribution()
+				} else {
+
 				}
 
 			} else if !recoveryCompleted {
@@ -160,7 +165,7 @@ func toggleOffAllBtnLights() {
 func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState, receiveRecoveryStateCh <-chan ElevatorState) {
 	ticker := time.NewTicker(config.StateTransmissionInterval)
 	stateTable := ReadStateTable(localID)
-
+	recoverSent := 0
 	elevatorState := ElevatorState{ID: localID, StateTable: stateTable}
 	for {
 		select {
@@ -168,10 +173,19 @@ func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<-
 			elevatorState.StateTable = stateTable
 			elevatorState.ID = localID
 		case <-ticker.C:
+			// fmt.Println("Sending: ", elevatorState.ID)
 			transmitStateCh <- elevatorState
+			if recoverSent == 1 {
+				elevatorState.StateTable = ReadStateTable(localID)
+				elevatorState.ID = localID
+				recoverSent--
+			} else if recoverSent > 1 {
+				recoverSent--
+			}
 		case recoveryState := <-receiveRecoveryStateCh:
 			elevatorState.StateTable = recoveryState.StateTable
 			elevatorState.ID = recoveryState.ID
+			recoverSent = 5
 		default:
 		}
 	}
@@ -194,9 +208,9 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool, saveStateFo
 						recoveryIDCh <- ID
 					}
 				} else {
-					fmt.Println("Funeral ceremony /begin ", stateTableUpdate[0][0])
+					// fmt.Println("Funeral ceremony /begin ", stateTableUpdate[0][0])
 					if stateTableUpdate[0][0] == 1 {
-						fmt.Println("Funeral ceremony /continue")
+						// fmt.Println("Funeral ceremony /continue")
 						stateTableUpdate[0][0] = 0
 						StateTables.Write(ID, stateTableUpdate)
 						RunOrderDistribution()
@@ -318,10 +332,10 @@ func StateTableRecovery(saveStateForRecoveryCh <-chan ElevatorState, recoveryIDC
 			recoveryStateTables[recoveryElevatorState.ID] = recoveryElevatorState.StateTable
 		case recoveryID := <-recoveryIDCh:
 			transmitRecoveryState := ElevatorState{ID: recoveryID, StateTable: recoveryStateTables[recoveryID]}
-			for i := 0; i < 10; i++ {
-				transmitRecoveryStateCh <- transmitRecoveryState
-				time.Sleep(100 * time.Millisecond)
-			}
+			// for i := 0; i < 10; i++ {
+			transmitRecoveryStateCh <- transmitRecoveryState
+			// time.Sleep(100 * time.Millisecond)
+			// }
 		default:
 		}
 	}
