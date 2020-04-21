@@ -69,6 +69,7 @@ func InitStateTable(port int) {
 
 //UpdateStateTableFromPacket receives the state table transmitted from other elevators and updates their information in StateTables. Hall buttons are also synchronized.
 func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableTransmitCh chan [7][3]int) {
+	recoveryCompleted := false
 	for {
 		select {
 		case receivedState := <-receiveStateCh:
@@ -83,18 +84,19 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 				updateHallLightsFromExternalOrders()
 				RunOrderDistribution()
 
-			} else {
+			} else if !recoveryCompleted {
 				// Check if local was dead
-				// oldStatetable := receivedStateTables.StateTables[localID]
-				// wasDead := oldStatetable[0][0]
-				// if wasDead == 0 {
-				// 	updatedStatetable := Get()
-				// 	for row := 0; row < 4; row++ {
-				// 		updatedStatetable[row+3][2] = oldStatetable[row+3][2]
-				// 	}
-				// 	StateTables.Write(localID, updatedStatetable)
-				// 	RunOrderDistribution()
-				// }
+				recoveryStatetable := receivedState.StateTable
+				wasDead := recoveryStatetable[0][0]
+				if wasDead == 0 {
+					currentStatetable := Get()
+					for row := 0; row < 4; row++ {
+						currentStatetable[row+3][2] = recoveryStatetable[row+3][2]
+					}
+					StateTables.Write(localID, currentStatetable)
+					RunOrderDistribution()
+					recoveryCompleted = true
+				}
 			}
 		default:
 		}
@@ -150,7 +152,7 @@ func toggleOffAllBtnLights() {
 }
 
 // TransmitState repeatedly outputs the state table to be transmitted. The state table to be transmitted is updated via the stateTableTransmitCh-channel
-func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState) {
+func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState, transmitRecoveryCh <-chan [7][3]int) {
 	ticker := time.NewTicker(config.StateTransmissionInterval)
 	stateTable := ReadStateTable(localID)
 
@@ -161,13 +163,15 @@ func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<-
 			elevatorState.StateTable = stateTable
 		case <-ticker.C:
 			transmitStateCh <- elevatorState
+		case recoveryStateTable := <-transmitRecoveryCh:
+			elevatorState.StateTable = recoveryStateTable
 		default:
 		}
 	}
 }
 
 //UpdateActiveElevators updates StateTables if an elevator goes offline or comes back online.
-func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
+func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool, saveStateForRecoveryCh chan<- ElevatorState, recoveryIDCh chan<- string) {
 	for {
 		select {
 		case activeElevators := <-activeElevatorsCh:
@@ -179,6 +183,7 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 						stateTableUpdate[0][0] = 1
 						StateTables.Write(ID, stateTableUpdate)
 						RunOrderDistribution()
+						recoveryIDCh <- ID
 					}
 				} else {
 					fmt.Println("Funeral ceremony /begin")
@@ -186,6 +191,7 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool) {
 						stateTableUpdate[0][0] = 0
 						StateTables.Write(ID, stateTableUpdate)
 						RunOrderDistribution()
+						saveStateForRecoveryCh <- ElevatorState{ID: ID, StateTable: ReadStateTable(ID)}
 					}
 				}
 			}
@@ -293,4 +299,20 @@ func ReadStateTable(ID string) [7][3]int {
 
 func UpdateActiveLights(butn elevio.ButtonType, floor int, active bool) {
 	activeLights.Write(int(butn), floor, active)
+}
+
+func StateTableRecovery(saveStateForRecoveryCh <-chan ElevatorState, recoveryIDCh <-chan string, transmitRecoveryStateTableCh chan<- [7][3]int) {
+	recoveryStateTables := make(map[string][7][3]int)
+	for {
+		select {
+		case recoveryElevatorState := <-saveStateForRecoveryCh:
+			recoveryStateTables[recoveryElevatorState.ID] = recoveryElevatorState.StateTable
+		case recoveryID := <-recoveryIDCh:
+			for i := 0; i < 10; i++ {
+				transmitRecoveryStateTableCh <- recoveryStateTables[recoveryID]
+				time.Sleep(100 * time.Millisecond)
+			}
+		default:
+		}
+	}
 }

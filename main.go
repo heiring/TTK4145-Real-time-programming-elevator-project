@@ -27,16 +27,21 @@ func main() {
 	receiveStateCh := make(chan statetable.ElevatorState)
 	activeElevatorsCh := make(chan map[string]bool)
 
+	saveStateForRecoveryCh := make(chan statetable.ElevatorState)
+	recoveryIDCh := make(chan string)
+	transmitRecoveryStateTableCh := make(chan [7][3]int)
+
 	elevio.Init(ip, numFloors)
 	statetable.InitStateTable(intport)
 
+	go statetable.StateTableRecovery(saveStateForRecoveryCh, recoveryIDCh, transmitRecoveryStateTableCh)
 	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
-	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
+	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh, transmitRecoveryStateTableCh)
 	// fsm.InitFSM(stateTableTransmitCh)
 	go fsm.PollHardwareActions(stateTableTransmitCh)
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 
-	go statetable.UpdateActiveElevators(activeElevatorsCh)
+	go statetable.UpdateActiveElevators(activeElevatorsCh, saveStateForRecoveryCh, recoveryIDCh)
 
 	for true {
 		time.Sleep(10 * time.Second)
