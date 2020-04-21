@@ -274,10 +274,12 @@ func PollOrders(receiver chan<- int) {
 }
 
 func RemoveOrder() {
-	if len(prioritizedOrders) > 0 {
+	if len(prioritizedOrders) > 1 {
 		fmt.Println("COMPLETED ORDER ", prioritizedOrders[0])
 		prioritizedOrders = prioritizedOrders[1:]
 		fmt.Println("Remaining ORDERS ", prioritizedOrders)
+	} else if len(prioritizedOrders) == 1 {
+		prioritizedOrders = nil
 	}
 }
 

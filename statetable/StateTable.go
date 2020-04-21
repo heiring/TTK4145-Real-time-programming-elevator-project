@@ -75,14 +75,19 @@ func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableT
 		case receivedState := <-receiveStateCh:
 			ID := receivedState.ID
 			if ID != localID {
-				StateTables.Write(ID, receivedState.StateTable)
-				updatedLocalState, ok := checkIfExternalOrderCompleted(receivedState.StateTable)
-				if ok {
-					StateTables.Write(localID, updatedLocalState)
-					stateTableTransmitCh <- Get()
+
+				stable, ok := StateTables.ReadWholeMap()[ID]
+				if stable[0][0] != 0 && ok || !ok {
+
+					StateTables.Write(ID, receivedState.StateTable)
+					updatedLocalState, ok := checkIfExternalOrderCompleted(receivedState.StateTable)
+					if ok {
+						StateTables.Write(localID, updatedLocalState)
+						stateTableTransmitCh <- Get()
+					}
+					updateHallLightsFromExternalOrders()
+					RunOrderDistribution()
 				}
-				updateHallLightsFromExternalOrders()
-				RunOrderDistribution()
 
 			} else if !recoveryCompleted {
 				// Check if local was dead
@@ -182,14 +187,16 @@ func UpdateActiveElevators(activeElevatorsCh <-chan map[string]bool, saveStateFo
 
 				if isAlive {
 					if stateTableUpdate[0][0] == 0 {
+						fmt.Println("Funeral ceremony /over")
 						stateTableUpdate[0][0] = 1
 						StateTables.Write(ID, stateTableUpdate)
 						RunOrderDistribution()
 						recoveryIDCh <- ID
 					}
 				} else {
-					fmt.Println("Funeral ceremony /begin")
+					fmt.Println("Funeral ceremony /begin ", stateTableUpdate[0][0])
 					if stateTableUpdate[0][0] == 1 {
+						fmt.Println("Funeral ceremony /continue")
 						stateTableUpdate[0][0] = 0
 						StateTables.Write(ID, stateTableUpdate)
 						RunOrderDistribution()
