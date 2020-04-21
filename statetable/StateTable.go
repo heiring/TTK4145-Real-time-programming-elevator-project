@@ -35,8 +35,8 @@ const UnknownFloor int = -1
 
 // ElevatorState is the data type which will be broadcasted from each elevator
 type ElevatorState struct {
-	ID          string
-	StateTables map[string][7][3]int
+	ID         string
+	StateTable [7][3]int
 }
 
 // InitStateTable initialized the local state table with appropriate values.
@@ -68,35 +68,33 @@ func InitStateTable(port int) {
 }
 
 //UpdateStateTableFromPacket receives the state table transmitted from other elevators and updates their information in StateTables. Hall buttons are also synchronized.
-func UpdateStateTableFromPacket(receiveStateTablesCh <-chan ElevatorState, stateTablesTransmitCh chan map[string][7][3]int) {
+func UpdateStateTableFromPacket(receiveStateCh <-chan ElevatorState, stateTableTransmitCh chan [7][3]int) {
 	for {
 		select {
-		case receivedStateTables := <-receiveStateTablesCh:
-			ID := receivedStateTables.ID
-
+		case receivedState := <-receiveStateCh:
+			ID := receivedState.ID
 			if ID != localID {
-				for ID, statetable := range receivedStateTables.StateTables {
-					StateTables.Write(ID, statetable)
-					updatedLocalState, ok := checkIfExternalOrderCompleted(statetable)
-					if ok {
-						StateTables.Write(localID, updatedLocalState)
-						stateTablesTransmitCh <- StateTables.ReadWholeMap()
-					}
-					updateHallLightsFromExternalOrders()
-					RunOrderDistribution()
+				StateTables.Write(ID, receivedState.StateTable)
+				updatedLocalState, ok := checkIfExternalOrderCompleted(receivedState.StateTable)
+				if ok {
+					StateTables.Write(localID, updatedLocalState)
+					stateTableTransmitCh <- Get()
 				}
+				updateHallLightsFromExternalOrders()
+				RunOrderDistribution()
+
 			} else {
 				// Check if local was dead
-				oldStatetable := receivedStateTables.StateTables[localID]
-				wasDead := oldStatetable[0][0]
-				if wasDead == 0 {
-					updatedStatetable := Get()
-					for row := 0; row < 4; row++ {
-						updatedStatetable[row+3][2] = oldStatetable[row+3][2]
-					}
-					StateTables.Write(localID, updatedStatetable)
-					RunOrderDistribution()
-				}
+				// oldStatetable := receivedStateTables.StateTables[localID]
+				// wasDead := oldStatetable[0][0]
+				// if wasDead == 0 {
+				// 	updatedStatetable := Get()
+				// 	for row := 0; row < 4; row++ {
+				// 		updatedStatetable[row+3][2] = oldStatetable[row+3][2]
+				// 	}
+				// 	StateTables.Write(localID, updatedStatetable)
+				// 	RunOrderDistribution()
+				// }
 			}
 		default:
 		}
@@ -152,16 +150,15 @@ func toggleOffAllBtnLights() {
 }
 
 // TransmitState repeatedly outputs the state table to be transmitted. The state table to be transmitted is updated via the stateTableTransmitCh-channel
-func TransmitState(stateTablesTransmitCh <-chan map[string][7][3]int, transmitStateCh chan<- ElevatorState) {
+func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState) {
 	ticker := time.NewTicker(config.StateTransmissionInterval)
-	stateTables := StateTables.ReadWholeMap()
+	stateTable := ReadStateTable(localID)
 
-	elevatorState := ElevatorState{ID: localID, StateTables: stateTables}
+	elevatorState := ElevatorState{ID: localID, StateTable: stateTable}
 	for {
 		select {
-		case stateTables = <-stateTablesTransmitCh:
-			elevatorState.StateTables = stateTables
-
+		case stateTable = <-stateTableTransmitCh:
+			elevatorState.StateTable = stateTable
 		case <-ticker.C:
 			transmitStateCh <- elevatorState
 		default:

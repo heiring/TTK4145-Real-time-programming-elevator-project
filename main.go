@@ -23,17 +23,17 @@ func main() {
 	intport, _ := strconv.Atoi(port)
 
 	transmitStateCh := make(chan statetable.ElevatorState)
-	stateTablesTransmitCh := make(chan map[string][7][3]int)
+	stateTableTransmitCh := make(chan [7][3]int)
 	receiveStateCh := make(chan statetable.ElevatorState)
 	activeElevatorsCh := make(chan map[string]bool)
 
 	elevio.Init(ip, numFloors)
 	statetable.InitStateTable(intport)
 
-	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTablesTransmitCh)
-	go statetable.TransmitState(stateTablesTransmitCh, transmitStateCh)
+	go statetable.UpdateStateTableFromPacket(receiveStateCh, stateTableTransmitCh)
+	go statetable.TransmitState(stateTableTransmitCh, transmitStateCh)
 	// fsm.InitFSM(stateTableTransmitCh)
-	go fsm.PollHardwareActions(stateTablesTransmitCh)
+	go fsm.PollHardwareActions(stateTableTransmitCh)
 	go packetprocessor.PacketInterchange(transmitStateCh, receiveStateCh, activeElevatorsCh, StateTransmissionInterval, ElevatorTimeout, LastUpdateInterval, ActiveElevatorsTransmissionInterval, TransmissionPort)
 
 	go statetable.UpdateActiveElevators(activeElevatorsCh)
