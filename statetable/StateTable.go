@@ -152,7 +152,7 @@ func toggleOffAllBtnLights() {
 }
 
 // TransmitState repeatedly outputs the state table to be transmitted. The state table to be transmitted is updated via the stateTableTransmitCh-channel
-func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState, transmitRecoveryCh <-chan [7][3]int) {
+func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<- ElevatorState, receiveRecoveryStateCh <-chan ElevatorState) {
 	ticker := time.NewTicker(config.StateTransmissionInterval)
 	stateTable := ReadStateTable(localID)
 
@@ -161,10 +161,12 @@ func TransmitState(stateTableTransmitCh <-chan [7][3]int, transmitStateCh chan<-
 		select {
 		case stateTable = <-stateTableTransmitCh:
 			elevatorState.StateTable = stateTable
+			elevatorState.ID = localID
 		case <-ticker.C:
 			transmitStateCh <- elevatorState
-		case recoveryStateTable := <-transmitRecoveryCh:
-			elevatorState.StateTable = recoveryStateTable
+		case recoveryState := <-receiveRecoveryStateCh:
+			elevatorState.StateTable = recoveryState.StateTable
+			elevatorState.ID = recoveryState.ID
 		default:
 		}
 	}
@@ -301,15 +303,16 @@ func UpdateActiveLights(butn elevio.ButtonType, floor int, active bool) {
 	activeLights.Write(int(butn), floor, active)
 }
 
-func StateTableRecovery(saveStateForRecoveryCh <-chan ElevatorState, recoveryIDCh <-chan string, transmitRecoveryStateTableCh chan<- [7][3]int) {
+func StateTableRecovery(saveStateForRecoveryCh <-chan ElevatorState, recoveryIDCh <-chan string, transmitRecoveryStateCh chan<- ElevatorState) {
 	recoveryStateTables := make(map[string][7][3]int)
 	for {
 		select {
 		case recoveryElevatorState := <-saveStateForRecoveryCh:
 			recoveryStateTables[recoveryElevatorState.ID] = recoveryElevatorState.StateTable
 		case recoveryID := <-recoveryIDCh:
+			transmitRecoveryState := ElevatorState{ID: recoveryID, StateTable: recoveryStateTables[recoveryID]}
 			for i := 0; i < 10; i++ {
-				transmitRecoveryStateTableCh <- recoveryStateTables[recoveryID]
+				transmitRecoveryStateCh <- transmitRecoveryState
 				time.Sleep(100 * time.Millisecond)
 			}
 		default:
